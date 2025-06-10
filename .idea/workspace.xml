@@ -10,6 +10,9 @@
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 7
 }</component>
@@ -22,6 +25,7 @@
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "main",
     "last_opened_file_path": "/Users/jp.abli/Desktop/PartenaireMAGB-projet/PartenaireMAGB-frontend/src/container/dashboard",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
@@ -77,7 +81,7 @@
       <workItem from="1748650572242" duration="12302000" />
       <workItem from="1748946664274" duration="49171000" />
       <workItem from="1749517363344" duration="1727000" />
-      <workItem from="1749548238252" duration="21395000" />
+      <workItem from="1749548238252" duration="21508000" />
     </task>
     <servers />
   </component>
