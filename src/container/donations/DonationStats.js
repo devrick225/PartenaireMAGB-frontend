@@ -101,21 +101,24 @@ function DonationStats() {
       totalCount: backendStats.totalCount || 0,
       averageAmount: backendStats.averageAmount || 0,
       activeRecurringDonations: backendStats.activeRecurringDonations || 0,
-      categoryStats: (backendStats.categoriesBreakdown || []).map((item) => ({
-        category: item._id,
-        amount: item.totalAmount,
-        count: item.count,
-      })),
-      monthlyStats: backendStats.monthlyEvolution || [],
+      categoryStats: Array.isArray(backendStats.categoriesBreakdown)
+        ? backendStats.categoriesBreakdown.map((item) => ({
+            category: item._id,
+            amount: item.totalAmount || 0,
+            count: item.count || 0,
+          }))
+        : [],
+      monthlyStats: Array.isArray(backendStats.monthlyEvolution) ? backendStats.monthlyEvolution : [],
     };
   };
 
   const currentStats = adaptBackendData(stats);
   const hasData = currentStats && currentStats.totalCount > 0;
 
-  const topCategory = currentStats?.categoryStats?.reduce((prev, current) =>
-    prev.amount > current.amount ? prev : current,
-  );
+  const topCategory =
+    currentStats?.categoryStats?.length > 0
+      ? currentStats.categoryStats.reduce((prev, current) => (prev.amount > current.amount ? prev : current))
+      : null;
 
   if (statsError) {
     return (
@@ -270,14 +273,17 @@ function DonationStats() {
                 {/* Répartition par catégorie */}
                 <Col xs={24} lg={12}>
                   <Card title="Répartition par catégorie" style={{ marginBottom: 16 }}>
-                    {currentStats.categoryStats && currentStats.categoryStats.length > 0 ? (
+                    {currentStats.categoryStats &&
+                    Array.isArray(currentStats.categoryStats) &&
+                    currentStats.categoryStats.length > 0 ? (
                       <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-                        {currentStats.categoryStats.map((item) => {
-                          const total = currentStats.totalAmount;
-                          const percentage = total > 0 ? ((item.amount / total) * 100).toFixed(1) : 0;
+                        {currentStats.categoryStats.map((item, index) => {
+                          const total = currentStats.totalAmount || 0;
+                          const itemAmount = item.amount || 0;
+                          const percentage = total > 0 ? ((itemAmount / total) * 100).toFixed(1) : 0;
 
                           return (
-                            <div key={item.category} style={{ marginBottom: 16 }}>
+                            <div key={`${item.category}-${index}`} style={{ marginBottom: 16 }}>
                               <div
                                 style={{
                                   display: 'flex',
@@ -313,10 +319,10 @@ function DonationStats() {
                                     style: 'currency',
                                     currency: 'XOF',
                                     minimumFractionDigits: 0,
-                                  }).format(item.amount)}
+                                  }).format(itemAmount)}
                                 </Text>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
-                                  {item.count} donation{item.count > 1 ? 's' : ''}
+                                  {item.count || 0} donation{(item.count || 0) > 1 ? 's' : ''}
                                 </Text>
                               </div>
                             </div>
@@ -334,11 +340,13 @@ function DonationStats() {
                 {/* Évolution mensuelle */}
                 <Col xs={24} lg={12}>
                   <Card title="Évolution mensuelle" style={{ marginBottom: 16 }}>
-                    {currentStats.monthlyStats && currentStats.monthlyStats.length > 0 ? (
+                    {currentStats.monthlyStats &&
+                    Array.isArray(currentStats.monthlyStats) &&
+                    currentStats.monthlyStats.length > 0 ? (
                       <div style={{ marginTop: 16 }}>
                         {currentStats.monthlyStats.map((item, index) => (
                           <div
-                            key={index}
+                            key={`${item?._id?.month}-${item?._id?.year}-${index}`}
                             style={{
                               display: 'flex',
                               justifyContent: 'space-between',
@@ -347,7 +355,7 @@ function DonationStats() {
                             }}
                           >
                             <Text>
-                              {item._id.month}/{item._id.year}
+                              {item?._id?.month || 'N/A'}/{item?._id?.year || 'N/A'}
                             </Text>
                             <Space>
                               <Text strong>
@@ -355,9 +363,9 @@ function DonationStats() {
                                   style: 'currency',
                                   currency: 'XOF',
                                   minimumFractionDigits: 0,
-                                }).format(item.totalAmount)}
+                                }).format(item?.totalAmount || 0)}
                               </Text>
-                              <Text type="secondary">({item.count})</Text>
+                              <Text type="secondary">({item?.count || 0})</Text>
                             </Space>
                           </div>
                         ))}
@@ -394,7 +402,7 @@ function DonationStats() {
                     </Col>
                   )}
 
-                  {topCategory && (
+                  {topCategory && topCategory.category && (
                     <Col xs={24} md={8}>
                       <Card size="small" style={{ backgroundColor: '#fff7e6', border: '1px solid #ffd591' }}>
                         <Text strong style={{ color: '#fa8c16' }}>

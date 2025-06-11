@@ -36,7 +36,6 @@ import {
   UserOutlined,
   ExclamationCircleOutlined,
   CheckCircleOutlined,
-  TrophyOutlined,
   TeamOutlined,
   StarOutlined,
   AlertOutlined,
@@ -56,16 +55,14 @@ function TicketDashboard() {
   const [dateRange, setDateRange] = useState([moment().subtract(30, 'days'), moment()]);
   const [selectedPeriod, setSelectedPeriod] = useState('month');
 
-  const { tickets, user } = useSelector((state) => ({
+  const { tickets, stats, loadingStats, user } = useSelector((state) => ({
     tickets: state.tickets.data.tickets || [],
     stats: state.tickets.stats,
-    loading: state.tickets.loading,
     loadingStats: state.tickets.loadingStats,
     user: state.auth?.user,
   }));
 
-  const isAdmin = user?.role && ['admin', 'moderator'].includes(user.role);
-  console.log(isAdmin);
+  const isAdmin = user?.role && ['admin', 'moderator', 'support_agent'].includes(user.role);
 
   useEffect(() => {
     if (dispatch) {
@@ -76,79 +73,130 @@ function TicketDashboard() {
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
-  // Calculer les métriques principales
-  const calculateMetrics = () => {
+  // Calculer les métriques localement (fallback)
+  const calculateMetricsFromTickets = () => {
     if (!tickets.length) {
       return {
         total: 0,
         open: 0,
         resolved: 0,
+        closed: 0,
         avgResponseTime: 0,
-        slaRespect: 0,
-        satisfactionScore: 0,
+        avgResolutionTime: 0,
+        overdueTickets: 0,
+        categoryBreakdown: [],
+        priorityBreakdown: [],
+        isPersonalStats: !isAdmin,
       };
     }
 
     const openTickets = tickets.filter((t) =>
       ['open', 'in_progress', 'waiting_user', 'waiting_admin'].includes(t.status),
     );
-    const resolvedTickets = tickets.filter((t) => ['resolved', 'closed'].includes(t.status));
-    const ratedTickets = tickets.filter((t) => t.rating?.score);
+    const resolvedTickets = tickets.filter((t) => t.status === 'resolved');
+    const closedTickets = tickets.filter((t) => t.status === 'closed');
 
     // Calcul temps de réponse moyen
     const responseTimes = tickets.filter((t) => t.metrics?.firstResponseTime).map((t) => t.metrics.firstResponseTime);
     const avgResponseTime = responseTimes.length ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length : 0;
 
-    // Score de satisfaction moyen
-    const satisfactionScore = ratedTickets.length
-      ? ratedTickets.reduce((sum, t) => sum + t.rating.score, 0) / ratedTickets.length
+    // Calcul temps de résolution moyen
+    const resolutionTimes = tickets.filter((t) => t.metrics?.resolutionTime).map((t) => t.metrics.resolutionTime);
+    const avgResolutionTime = resolutionTimes.length
+      ? resolutionTimes.reduce((a, b) => a + b, 0) / resolutionTimes.length
       : 0;
 
-    // Respect SLA (simplifié)
+    // Tickets en retard
     const overdueTickets = tickets.filter((t) => {
       if (!['open', 'in_progress'].includes(t.status)) return false;
       const ageHours = moment().diff(moment(t.createdAt), 'hours');
       const slaThreshold = { urgent: 2, high: 8, medium: 24, low: 72 }[t.priority] || 24;
       return ageHours > slaThreshold;
-    });
-    const slaRespect = tickets.length ? ((tickets.length - overdueTickets.length) / tickets.length) * 100 : 100;
+    }).length;
+
+    // Répartition par catégorie
+    const categoryBreakdown = [
+      { _id: 'technical', count: tickets.filter((t) => t.category === 'technical').length },
+      { _id: 'payment', count: tickets.filter((t) => t.category === 'payment').length },
+      { _id: 'account', count: tickets.filter((t) => t.category === 'account').length },
+      { _id: 'donation', count: tickets.filter((t) => t.category === 'donation').length },
+      { _id: 'general', count: tickets.filter((t) => t.category === 'general').length },
+    ].filter((item) => item.count > 0);
+
+    // Répartition par priorité
+    const priorityBreakdown = [
+      { _id: 'low', count: tickets.filter((t) => t.priority === 'low').length },
+      { _id: 'medium', count: tickets.filter((t) => t.priority === 'medium').length },
+      { _id: 'high', count: tickets.filter((t) => t.priority === 'high').length },
+      { _id: 'urgent', count: tickets.filter((t) => t.priority === 'urgent').length },
+    ].filter((item) => item.count > 0);
 
     return {
       total: tickets.length,
       open: openTickets.length,
       resolved: resolvedTickets.length,
+      closed: closedTickets.length,
       avgResponseTime: Math.round(avgResponseTime),
-      slaRespect: Math.round(slaRespect),
-      satisfactionScore: Math.round(satisfactionScore * 10) / 10,
+      avgResolutionTime: Math.round(avgResolutionTime),
+      overdueTickets,
+      categoryBreakdown,
+      priorityBreakdown,
+      isPersonalStats: !isAdmin,
     };
+  };
+
+  // Utiliser les statistiques du backend ou calculer localement en fallback
+  const getEffectiveStats = () => {
+    if (stats) {
+      return {
+        total: stats.totalTickets || 0,
+        open: stats.openTickets || 0,
+        resolved: stats.resolvedTickets || 0,
+        closed: stats.closedTickets || 0,
+        avgResponseTime: Math.round(stats.averageFirstResponseTime || 0),
+        avgResolutionTime: Math.round(stats.averageResolutionTime || 0),
+        overdueTickets: stats.overdueTickets || 0,
+        categoryBreakdown: stats.categoryBreakdown || [],
+        priorityBreakdown: stats.priorityBreakdown || [],
+        isPersonalStats: stats.isPersonalStats || false,
+      };
+    }
+
+    // Fallback: calculer localement si pas de stats du backend
+    return calculateMetricsFromTickets();
   };
 
   // Données pour les graphiques
   const prepareChartData = () => {
+    const effective = getEffectiveStats();
+
     // Répartition par statut
     const statusData = [
-      { name: 'Ouverts', value: tickets.filter((t) => t.status === 'open').length, color: '#ff4d4f' },
-      { name: 'En cours', value: tickets.filter((t) => t.status === 'in_progress').length, color: '#faad14' },
-      {
-        name: 'En attente',
-        value: tickets.filter((t) => ['waiting_user', 'waiting_admin'].includes(t.status)).length,
-        color: '#1890ff',
-      },
-      { name: 'Résolus', value: tickets.filter((t) => t.status === 'resolved').length, color: '#52c41a' },
-      { name: 'Fermés', value: tickets.filter((t) => t.status === 'closed').length, color: '#d9d9d9' },
+      { name: 'Ouverts', value: effective.open, color: '#ff4d4f' },
+      { name: 'Résolus', value: effective.resolved, color: '#52c41a' },
+      { name: 'Fermés', value: effective.closed, color: '#d9d9d9' },
     ].filter((item) => item.value > 0);
 
-    // Répartition par catégorie
-    const categoryData = [
-      { name: 'Technique', value: tickets.filter((t) => t.category === 'technical').length },
-      { name: 'Paiement', value: tickets.filter((t) => t.category === 'payment').length },
-      { name: 'Compte', value: tickets.filter((t) => t.category === 'account').length },
-      { name: 'Dons', value: tickets.filter((t) => t.category === 'donation').length },
-      {
-        name: 'Autre',
-        value: tickets.filter((t) => !['technical', 'payment', 'account', 'donation'].includes(t.category)).length,
-      },
-    ].filter((item) => item.value > 0);
+    // Répartition par catégorie (utiliser les données du backend ou fallback local)
+    const categoryNames = {
+      technical: 'Technique',
+      payment: 'Paiement',
+      account: 'Compte',
+      donation: 'Dons',
+      general: 'Général',
+      bug_report: 'Bug Report',
+      feature_request: 'Demande de fonctionnalité',
+      complaint: 'Plainte',
+      suggestion: 'Suggestion',
+    };
+
+    const categoryData = effective.categoryBreakdown
+      .map((cat) => ({
+        // eslint-disable-next-line no-underscore-dangle
+        name: categoryNames[cat._id] || cat._id,
+        value: cat.count,
+      }))
+      .filter((item) => item.value > 0);
 
     // Evolution temporelle (7 derniers jours)
     const timeData = Array.from({ length: 7 }, (_, i) => {
@@ -216,7 +264,7 @@ function TicketDashboard() {
       .slice(0, 5);
   };
 
-  const metrics = calculateMetrics();
+  const metrics = getEffectiveStats();
   const { statusData, categoryData, timeData } = prepareChartData();
   const topAgents = getTopAgents();
   const urgentTickets = getUrgentTickets();
@@ -276,10 +324,29 @@ function TicketDashboard() {
 
       <Main>
         <SupportNavigation />
+
+        {/* Indicateur de type de stats */}
+        {!loadingStats && metrics && (
+          <Alert
+            style={{ marginBottom: 16 }}
+            message={
+              metrics.isPersonalStats ? '📊 Vos statistiques personnelles' : '🌐 Statistiques globales du système'
+            }
+            description={
+              metrics.isPersonalStats
+                ? 'Vous consultez vos propres tickets et statistiques.'
+                : 'Vous consultez les statistiques de tous les utilisateurs du système.'
+            }
+            type={metrics.isPersonalStats ? 'info' : 'success'}
+            showIcon
+            closable
+          />
+        )}
+
         {/* Filtres */}
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col>
-            <Select value={selectedPeriod} onChange={setSelectedPeriod} style={{ width: 150 }}>
+            <Select value={selectedPeriod} onChange={setSelectedPeriod} style={{ width: 150 }} loading={loadingStats}>
               <Option value="week">Cette semaine</Option>
               <Option value="month">Ce mois</Option>
               <Option value="year">Cette année</Option>
@@ -336,22 +403,21 @@ function TicketDashboard() {
           <Col xs={24} sm={12} lg={4}>
             <Card>
               <Statistic
-                title="Respect SLA"
-                value={metrics.slaRespect}
-                suffix="%"
-                prefix={<TrophyOutlined />}
-                valueStyle={{ color: metrics.slaRespect >= 90 ? '#52c41a' : '#fa8c16' }}
+                title="Temps Résolution"
+                value={metrics.avgResolutionTime}
+                suffix="min"
+                prefix={<ClockCircleOutlined />}
+                valueStyle={{ color: '#722ed1' }}
               />
             </Card>
           </Col>
           <Col xs={24} sm={12} lg={4}>
             <Card>
               <Statistic
-                title="Satisfaction"
-                value={metrics.satisfactionScore}
-                suffix="/5"
-                prefix={<StarOutlined />}
-                valueStyle={{ color: '#eb2f96' }}
+                title="Tickets en retard"
+                value={metrics.overdueTickets}
+                prefix={<ExclamationCircleOutlined />}
+                valueStyle={{ color: '#ff4d4f' }}
               />
             </Card>
           </Col>
@@ -498,11 +564,11 @@ function TicketDashboard() {
         </Row>
 
         {/* Alerte SLA */}
-        {metrics.slaRespect < 90 && (
+        {metrics.overdueTickets > 0 && (
           <Alert
             style={{ marginTop: 16 }}
-            message="Attention: Respect du SLA sous les 90%"
-            description={`Le pourcentage de respect du SLA est de ${metrics.slaRespect}%. Veuillez vérifier les tickets en retard.`}
+            message="Attention: Tickets en retard"
+            description={`Il y a ${metrics.overdueTickets} ticket(s) en retard. Veuillez vérifier les tickets en retard.`}
             type="warning"
             showIcon
             closable

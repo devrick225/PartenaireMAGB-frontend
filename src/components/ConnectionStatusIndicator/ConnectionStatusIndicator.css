@@ -1,0 +1,121 @@
+/* Styles pour l'indicateur de connexion */
+.connection-indicator {
+  position: fixed;
+  z-index: 1000;
+  max-width: 400px;
+  min-width: 300px;
+}
+
+/* Positionnement */
+.connection-indicator-top-right {
+  top: 20px;
+  right: 20px;
+}
+
+.connection-indicator-top-left {
+  top: 20px;
+  left: 20px;
+}
+
+.connection-indicator-bottom-right {
+  bottom: 20px;
+  right: 20px;
+}
+
+.connection-indicator-bottom-left {
+  bottom: 20px;
+  left: 20px;
+}
+
+.connection-indicator-top-center {
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Badges de connexion minimalistes */
+.connection-badge {
+  position: fixed;
+  z-index: 999;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 4px 8px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-size: 12px;
+}
+
+.connection-badge-top-right {
+  top: 10px;
+  right: 10px;
+}
+
+.connection-badge-top-left {
+  top: 10px;
+  left: 10px;
+}
+
+.connection-badge-bottom-right {
+  bottom: 10px;
+  right: 10px;
+}
+
+.connection-badge-bottom-left {
+  bottom: 10px;
+  left: 10px;
+}
+
+/* Animations */
+.connection-indicator {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .connection-indicator {
+    left: 10px !important;
+    right: 10px !important;
+    max-width: none;
+    min-width: auto;
+    width: calc(100% - 20px);
+  }
+  
+  .connection-indicator-top-center {
+    transform: none;
+  }
+}
+
+/* États spéciaux */
+.connection-indicator .ant-alert {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+}
+
+.connection-indicator .ant-alert-error {
+  border-left: 4px solid #ff4d4f;
+}
+
+.connection-indicator .ant-alert-success {
+  border-left: 4px solid #52c41a;
+}
+
+/* Badge d'état */
+.connection-badge .ant-badge-status-dot {
+  width: 8px;
+  height: 8px;
+}
+
+.connection-badge .ant-badge-status-text {
+  color: #595959;
+  font-weight: 500;
+} 

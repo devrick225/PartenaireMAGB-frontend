@@ -26,6 +26,19 @@ function RolePermissionsHelp({ visible, onClose }) {
         'Voir ses propres statistiques',
       ],
     },
+    [ROLES.SUPPORT_AGENT]: {
+      title: 'Agent Support',
+      color: '#fa8c16',
+      icon: <MailOutlined />,
+      description: 'Responsable du support et assistance utilisateurs',
+      features: [
+        'Toutes les fonctionnalités utilisateur',
+        'Voir la liste des utilisateurs',
+        'Gérer les tickets de support',
+        'Modérer le contenu',
+        'Consulter les donations (lecture seule)',
+      ],
+    },
     [ROLES.MODERATOR]: {
       title: 'Modérateur',
       color: '#722ed1',
@@ -85,19 +98,27 @@ function RolePermissionsHelp({ visible, onClose }) {
 
   const getAccessMatrix = () => {
     const features = [
-      { key: 'profile', label: 'Profil personnel', roles: [ROLES.USER, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN] },
+      {
+        key: 'profile',
+        label: 'Profil personnel',
+        roles: [ROLES.USER, ROLES.SUPPORT_AGENT, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN],
+      },
       {
         key: 'donations_personal',
         label: 'Mes donations',
-        roles: [ROLES.USER, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN],
+        roles: [ROLES.USER, ROLES.SUPPORT_AGENT, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN],
       },
       {
         key: 'support_create',
         label: 'Créer des tickets',
-        roles: [ROLES.USER, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN],
+        roles: [ROLES.USER, ROLES.SUPPORT_AGENT, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN],
       },
-      { key: 'users_list', label: 'Liste des utilisateurs', roles: [ROLES.MODERATOR, ROLES.ADMIN] },
-      { key: 'support_manage', label: 'Gérer le support', roles: [ROLES.MODERATOR, ROLES.ADMIN] },
+      {
+        key: 'users_list',
+        label: 'Liste des utilisateurs',
+        roles: [ROLES.SUPPORT_AGENT, ROLES.MODERATOR, ROLES.ADMIN],
+      },
+      { key: 'support_manage', label: 'Gérer le support', roles: [ROLES.SUPPORT_AGENT, ROLES.MODERATOR, ROLES.ADMIN] },
       { key: 'donations_all', label: 'Toutes les donations', roles: [ROLES.TREASURER, ROLES.ADMIN] },
       { key: 'reports', label: 'Rapports financiers', roles: [ROLES.TREASURER, ROLES.ADMIN] },
       { key: 'user_management', label: 'Gestion des utilisateurs', roles: [ROLES.ADMIN] },

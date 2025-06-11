@@ -84,14 +84,16 @@ function DonationAdminDashboard() {
     donationStats,
     payments,
     paymentsLoading,
-    paymentStats
+    paymentStats,
+    user
   } = useSelector(state => ({
     donations: state.donations.donations || [],
     donationsLoading: state.donations.loading,
     donationStats: state.donations.stats,
     payments: state.payments.payments || [],
     paymentsLoading: state.payments.loading,
-    paymentStats: state.payments.stats
+    paymentStats: state.payments.stats,
+    user: state.auth?.user
   }));
 
   const PageRoutes = [
@@ -101,6 +103,10 @@ function DonationAdminDashboard() {
 
   useEffect(() => {
     loadData();
+  }, [selectedPeriod, filterCategory, filterStatus]);
+
+  // useEffect séparé pour l'auto-refresh qui ne dépend pas des filtres
+  useEffect(() => {
     setupAutoRefresh();
 
     return () => {
@@ -108,7 +114,7 @@ function DonationAdminDashboard() {
         clearInterval(refreshInterval);
       }
     };
-  }, [selectedPeriod, filterCategory, filterStatus]);
+  }, []); // Pas de dépendances pour éviter de recréer l'intervalle
 
   const loadData = async () => {
     setLoading(true);
@@ -120,7 +126,7 @@ function DonationAdminDashboard() {
         })),
         dispatch(donationStatsReadData({ period: selectedPeriod })),
         dispatch(getPaymentsList()),
-        dispatch(getPaymentStats())
+        dispatch(getPaymentStats({ period: selectedPeriod }))
       ]);
     } catch (error) {
       message.error('Erreur lors du chargement des données');
@@ -130,15 +136,26 @@ function DonationAdminDashboard() {
   };
 
   const setupAutoRefresh = () => {
+    // Nettoyer l'ancien intervalle s'il existe
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
+    
     // Refresh automatique toutes les 30 secondes
     const interval = setInterval(() => {
       if (!donationsLoading && !paymentsLoading) {
+        // Ne pas appeler loadData() pour éviter la boucle, juste les stats
         dispatch(donationStatsReadData({ period: selectedPeriod }));
-        dispatch(getPaymentStats());
+        dispatch(getPaymentStats({ period: selectedPeriod }));
       }
     }, 30000);
 
     setRefreshInterval(interval);
+  };
+
+  // Fonction pour forcer le refresh manuel
+  const handleManualRefresh = async () => {
+    await loadData();
   };
 
   const handleExportData = async () => {
@@ -541,7 +558,7 @@ function DonationAdminDashboard() {
                 <Space>
                   <Button 
                     icon={<ReloadOutlined />}
-                    onClick={loadData}
+                    onClick={handleManualRefresh}
                     loading={loading}
                   >
                     Actualiser

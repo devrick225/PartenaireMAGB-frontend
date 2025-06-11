@@ -20,6 +20,7 @@ import RecurringDonations from './RecurringDonations';
 import DonationStats from './DonationStats';
 import DonationDetails from './DonationDetails';
 import PaymentsList from './PaymentsList';
+import UserDonationView from './UserDonationView';
 import { usePermissions } from '../../components/utilities/protectedRoute';
 import { getPaymentsList, getPaymentStats } from '../../redux/payments/actionCreator';
 import {
@@ -38,23 +39,19 @@ function Donations() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showAllDonations, setShowAllDonations] = useState(false);
   const [verifyingPayments, setVerifyingPayments] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const dispatch = useDispatch();
-  // eslint-disable-next-line no-unused-vars
-  const { hasRole, hasPermission, isAdmin, isTreasurer } = usePermissions();
 
-  const { donationsLoading, donationsError, recurringLoading, statsLoading, paymentsLoading, donations } = useSelector(
-    (state) => ({
-      donationsLoading: state.donations.loading,
-      donationsError: state.donations.donationsError,
-      recurringLoading: state.donations.recurringLoading,
-      statsLoading: state.donations.statsLoading,
-      paymentsLoading: state.payments.loading,
-      donations: state.donations.donations,
-    }),
-  );
+  // Permissions pour adapter l'interface selon le rôle
+  const { isAdmin, isTreasurer, isModerator, isSupportAgent } = usePermissions();
+  const isAdminUser = isAdmin || isTreasurer || isModerator || isSupportAgent;
 
-  console.log(recurringLoading);
-  console.log(statsLoading);
+  const { donationsLoading, donationsError, paymentsLoading, donations } = useSelector((state) => ({
+    donationsLoading: state.donations.loading,
+    donationsError: state.donations.donationsError,
+    paymentsLoading: state.payments.loading,
+    donations: state.donations.donations,
+  }));
 
   const PageRoutes = [
     {
@@ -63,20 +60,39 @@ function Donations() {
     },
     {
       path: '',
-      breadcrumbName: 'Gestion des Donations',
+      breadcrumbName: isAdminUser ? 'Administration des Donations' : 'Mes Donations',
     },
   ];
+  const loadInitialData = async () => {
+    try {
+      await Promise.all([
+        dispatch(donationsReadData({ includeAll: showAllDonations })),
+        dispatch(recurringDonationsReadData()),
+        dispatch(donationStatsReadData()),
+      ]);
+
+      if (isAdminUser) {
+        await Promise.all([dispatch(getPaymentsList()), dispatch(getPaymentStats())]);
+      }
+
+      setDataLoaded(true);
+    } catch (error) {
+      console.error('Erreur chargement données:', error);
+      message.error('Erreur lors du chargement des données');
+    }
+  };
 
   useEffect(() => {
-    if (dispatch) {
-      // Charger les données initiales
-      dispatch(donationsReadData({ includeAll: showAllDonations }));
-      dispatch(recurringDonationsReadData());
-      dispatch(donationStatsReadData());
-      dispatch(getPaymentsList());
-      dispatch(getPaymentStats());
+    if (!dataLoaded && dispatch) {
+      loadInitialData();
     }
-  }, [dispatch, showAllDonations]);
+  }, [dispatch, dataLoaded]);
+
+  useEffect(() => {
+    if (dataLoaded && isAdminUser) {
+      dispatch(donationsReadData({ includeAll: showAllDonations }));
+    }
+  }, [showAllDonations]);
 
   useEffect(() => {
     if (donationsError) {
@@ -93,19 +109,28 @@ function Donations() {
     setSelectedDonationId(donationId);
     setActiveTab('details');
   };
+  const handleRefresh = async () => {
+    try {
+      await Promise.all([
+        dispatch(donationsReadData({ includeAll: showAllDonations })),
+        dispatch(donationStatsReadData()),
+      ]);
+
+      if (isAdminUser) {
+        await Promise.all([dispatch(getPaymentsList()), dispatch(getPaymentStats())]);
+      }
+      message.success('Données actualisées');
+    } catch (error) {
+      console.error('Erreur refresh:', error);
+      message.error("Erreur lors de l'actualisation");
+    }
+  };
 
   const handleCreateSuccess = () => {
     setShowCreateForm(false);
     setActiveTab('list');
     message.success('Donation créée avec succès !');
-  };
-
-  const handleRefresh = () => {
-    dispatch(donationsReadData({ includeAll: showAllDonations }));
-    dispatch(donationStatsReadData());
-    dispatch(getPaymentsList());
-    dispatch(getPaymentStats());
-    message.success('Données actualisées');
+    handleRefresh();
   };
 
   const handleVerifyPayments = async () => {
@@ -120,7 +145,6 @@ function Donations() {
 
       if (result.success) {
         message.success(`Vérification terminée: ${result.data.checked} paiements vérifiés`);
-        // Actualiser les données après vérification
         handleRefresh();
       } else {
         message.error('Erreur lors de la vérification des paiements');
@@ -137,50 +161,102 @@ function Donations() {
     setShowAllDonations(!showAllDonations);
   };
 
-  const tabItems = [
-    {
-      key: 'list',
-      label: (
-        <span>
-          <ReconciliationOutlined />
-          Liste des Donations
-        </span>
-      ),
-      children: <DonationsList onViewDonation={handleViewDonation} onCreateNew={() => setShowCreateForm(true)} />,
-    },
-    {
-      key: 'payments',
-      label: (
-        <span>
-          <CreditCardOutlined />
-          Gestion des Paiements
-        </span>
-      ),
-      children: <PaymentsList />,
-    },
-    {
-      key: 'recurring',
-      label: (
-        <span>
-          <ReloadOutlined />
-          Donations Récurrentes
-        </span>
-      ),
-      children: <RecurringDonations onViewDonation={handleViewDonation} />,
-    },
-    {
-      key: 'stats',
-      label: (
-        <span>
-          <BarChartOutlined />
-          Statistiques
-        </span>
-      ),
-      children: <DonationStats />,
-    },
-  ];
+  const getTabItems = () => {
+    // Pour les utilisateurs normaux, utiliser UserDonationView
+    if (!isAdminUser) {
+      return [
+        {
+          key: 'list',
+          label: (
+            <span>
+              <ReconciliationOutlined />
+              Mes Donations
+            </span>
+          ),
+          children: (
+            <UserDonationView onViewDonation={handleViewDonation} onCreateNew={() => setShowCreateForm(true)} />
+          ),
+        },
+        {
+          key: 'recurring',
+          label: (
+            <span>
+              <ReloadOutlined />
+              Mes Donations Récurrentes
+            </span>
+          ),
+          children: <RecurringDonations onViewDonation={handleViewDonation} />,
+        },
+        {
+          key: 'stats',
+          label: (
+            <span>
+              <BarChartOutlined />
+              Mes Statistiques
+            </span>
+          ),
+          children: <DonationStats />,
+        },
+      ];
+    }
 
-  // Ajouter l'onglet détails si une donation est sélectionnée
+    // Pour les admins/trésoriers/modérateurs, interface complète
+    const baseItems = [
+      {
+        key: 'list',
+        label: (
+          <span>
+            <ReconciliationOutlined />
+            Toutes les Donations
+          </span>
+        ),
+        children: <DonationsList onViewDonation={handleViewDonation} onCreateNew={() => setShowCreateForm(true)} />,
+      },
+      {
+        key: 'recurring',
+        label: (
+          <span>
+            <ReloadOutlined />
+            Donations Récurrentes Globales
+          </span>
+        ),
+        children: <RecurringDonations onViewDonation={handleViewDonation} />,
+      },
+      {
+        key: 'stats',
+        label: (
+          <span>
+            <BarChartOutlined />
+            Statistiques Globales
+          </span>
+        ),
+        children: <DonationStats />,
+      },
+    ];
+
+    // Ajouter l'onglet paiements seulement pour les admins/trésoriers
+    if (isAdminUser) {
+      try {
+        baseItems.splice(1, 0, {
+          key: 'payments',
+          label: (
+            <span>
+              <CreditCardOutlined />
+              Gestion des Paiements
+            </span>
+          ),
+          children: <PaymentsList />,
+        });
+      } catch (error) {
+        console.warn('Erreur chargement PaymentsList:', error);
+      }
+    }
+
+    return baseItems;
+  };
+
+  const tabItems = getTabItems();
+
   if (selectedDonationId) {
     tabItems.push({
       key: 'details',
@@ -222,7 +298,11 @@ function Donations() {
   if (donationsLoading && activeTab === 'list') {
     return (
       <>
-        <PageHeader className="ninjadash-page-header-main" title="Gestion des Donations" routes={PageRoutes} />
+        <PageHeader
+          className="ninjadash-page-header-main"
+          title={isAdminUser ? 'Administration des Donations' : 'Mes Donations'}
+          routes={PageRoutes}
+        />
         <Main>
           <div style={{ textAlign: 'center', marginTop: 50 }}>
             <Spin size="large" tip="Chargement des donations..." />
@@ -236,7 +316,7 @@ function Donations() {
     <>
       <PageHeader
         className="ninjadash-page-header-main"
-        title="Gestion des Donations et Paiements"
+        title={isAdminUser ? 'Administration des Donations et Paiements' : 'Mes Donations'}
         routes={PageRoutes}
       />
       <Main>
@@ -244,7 +324,6 @@ function Donations() {
           <Col span={24}>
             <Cards headless>
               <div style={{ padding: '20px' }}>
-                {/* Header avec actions rapides */}
                 <div
                   style={{
                     display: 'flex',
@@ -258,38 +337,49 @@ function Donations() {
                   <div>
                     <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>
                       <DollarOutlined style={{ marginRight: 12, color: '#52c41a' }} />
-                      {activeTab === 'list' && 'Liste des Donations'}
+                      {activeTab === 'list' && (isAdminUser ? 'Administration des Donations' : 'Mes Donations')}
                       {activeTab === 'payments' && 'Gestion des Paiements'}
-                      {activeTab === 'recurring' && 'Donations Récurrentes'}
-                      {activeTab === 'stats' && 'Statistiques et Analytics'}
+                      {activeTab === 'recurring' &&
+                        (isAdminUser ? 'Donations Récurrentes Globales' : 'Mes Donations Récurrentes')}
+                      {activeTab === 'stats' && (isAdminUser ? 'Statistiques Globales' : 'Mes Statistiques')}
                     </h2>
                     <p style={{ margin: '8px 0 0 0', color: '#666', fontSize: 16 }}>
-                      {activeTab === 'list' && 'Gérez toutes les donations et leur traitement'}
+                      {activeTab === 'list' &&
+                        (isAdminUser
+                          ? 'Gérez toutes les donations et leur traitement'
+                          : 'Consultez et gérez vos donations personnelles')}
                       {activeTab === 'payments' && 'Surveillez les paiements et transactions'}
-                      {activeTab === 'recurring' && 'Administrez les donations automatiques'}
-                      {activeTab === 'stats' && 'Analysez les performances de vos campagnes'}
+                      {activeTab === 'recurring' &&
+                        (isAdminUser
+                          ? 'Administrez toutes les donations automatiques'
+                          : 'Gérez vos donations automatiques')}
+                      {activeTab === 'stats' &&
+                        (isAdminUser
+                          ? 'Analysez les performances globales'
+                          : 'Consultez vos statistiques personnelles')}
                     </p>
                   </div>
 
-                  {/* Actions rapides */}
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     <Button
                       type="default"
                       icon={<ReloadOutlined />}
                       onClick={handleRefresh}
-                      loading={donationsLoading || paymentsLoading}
+                      loading={donationsLoading || (isAdminUser && paymentsLoading)}
                     >
                       Actualiser
                     </Button>
 
-                    <Button
-                      type={showAllDonations ? 'primary' : 'default'}
-                      icon={<FilterOutlined />}
-                      onClick={handleToggleShowAll}
-                      ghost={showAllDonations}
-                    >
-                      {showAllDonations ? 'Toutes les donations' : 'Donations complétées'}
-                    </Button>
+                    {isAdminUser && (
+                      <Button
+                        type={showAllDonations ? 'primary' : 'default'}
+                        icon={<FilterOutlined />}
+                        onClick={handleToggleShowAll}
+                        ghost={showAllDonations}
+                      >
+                        {showAllDonations ? 'Toutes les donations' : 'Donations complétées'}
+                      </Button>
+                    )}
 
                     {(isAdmin || isTreasurer) && (
                       <Button
@@ -309,16 +399,14 @@ function Donations() {
                   </div>
                 </div>
 
-                {/* Indicateurs de charge */}
-                {(donationsLoading || paymentsLoading) && (
+                {(donationsLoading || (isAdminUser && paymentsLoading)) && (
                   <Card size="small" style={{ marginBottom: 16, textAlign: 'center' }}>
                     <Spin />
                     <span style={{ marginLeft: 8 }}>Chargement des données...</span>
                   </Card>
                 )}
 
-                {/* Indicateur du type d'affichage */}
-                {!showAllDonations && (
+                {isAdminUser && !showAllDonations && (
                   <Alert
                     message="Affichage filtré"
                     description="Seules les donations complétées sont affichées pour éviter les erreurs de calculs financiers. Utilisez le bouton 'Toutes les donations' pour voir l'historique complet."
@@ -330,14 +418,29 @@ function Donations() {
                   />
                 )}
 
-                {/* Statistiques rapides */}
+                {!isAdminUser && (
+                  <Alert
+                    message="Espace personnel des donations"
+                    description="Ici vous pouvez consulter vos donations, créer de nouveaux dons et suivre vos contributions récurrentes."
+                    type="success"
+                    showIcon
+                    closable
+                    style={{ marginBottom: 16 }}
+                    icon={<DollarOutlined />}
+                  />
+                )}
+
                 <Row gutter={16} style={{ marginBottom: 24 }}>
                   <Col xs={24} sm={6}>
                     <Card size="small">
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: 24, fontWeight: 600, color: '#52c41a' }}>{donations?.length || 0}</div>
                         <div style={{ color: '#666', fontSize: 12 }}>
-                          {showAllDonations ? 'Total Donations' : 'Donations Complétées'}
+                          {isAdminUser
+                            ? showAllDonations
+                              ? 'Total Donations'
+                              : 'Donations Complétées'
+                            : 'Mes Donations'}
                         </div>
                       </div>
                     </Card>
@@ -374,7 +477,6 @@ function Donations() {
                   </Col>
                 </Row>
 
-                {/* Navigation par onglets */}
                 <Tabs
                   activeKey={activeTab}
                   onChange={handleTabChange}

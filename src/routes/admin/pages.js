@@ -96,7 +96,9 @@ function PagesRoute() {
       <Route
         path="profile-settings/*"
         element={
-          <ProtectedRoute allowedRoles={[ROLES.USER, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN]}>
+          <ProtectedRoute
+            allowedRoles={[ROLES.USER, ROLES.SUPPORT_AGENT, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN]}
+          >
             <ProfileSettings />
           </ProtectedRoute>
         }
@@ -106,7 +108,9 @@ function PagesRoute() {
       <Route
         path="donations"
         element={
-          <ProtectedRoute allowedRoles={[ROLES.USER, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN]}>
+          <ProtectedRoute
+            allowedRoles={[ROLES.USER, ROLES.SUPPORT_AGENT, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN]}
+          >
             <Donations />
           </ProtectedRoute>
         }
@@ -127,7 +131,9 @@ function PagesRoute() {
       <Route
         path="donations/payment/success/:donationId?/:paymentId?"
         element={
-          <ProtectedRoute allowedRoles={[ROLES.USER, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN]}>
+          <ProtectedRoute
+            allowedRoles={[ROLES.USER, ROLES.SUPPORT_AGENT, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN]}
+          >
             <PaymentSuccess />
           </ProtectedRoute>
         }
@@ -136,7 +142,9 @@ function PagesRoute() {
       <Route
         path="donations/payment/failure/:donationId?/:paymentId?"
         element={
-          <ProtectedRoute allowedRoles={[ROLES.USER, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN]}>
+          <ProtectedRoute
+            allowedRoles={[ROLES.USER, ROLES.SUPPORT_AGENT, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN]}
+          >
             <PaymentFailure />
           </ProtectedRoute>
         }
@@ -145,7 +153,9 @@ function PagesRoute() {
       <Route
         path="donations/payment/cancel/:donationId?"
         element={
-          <ProtectedRoute allowedRoles={[ROLES.USER, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN]}>
+          <ProtectedRoute
+            allowedRoles={[ROLES.USER, ROLES.SUPPORT_AGENT, ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN]}
+          >
             <PaymentCancel />
           </ProtectedRoute>
         }

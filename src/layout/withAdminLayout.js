@@ -8,7 +8,7 @@ import propTypes from 'prop-types';
 import { Component } from 'react';
 import { Scrollbars } from '@pezhmanparsaee/react-custom-scrollbars';
 import { connect } from 'react-redux';
-import { Link, NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
 import MenueItems from './MenueItems';
 import { FooterStyle, LayoutContainer, SmallScreenAuthInfo, TopMenuSearch } from './Style';
@@ -220,15 +220,8 @@ const ThemeLayout = (WrappedComponent) => {
                     <Row>
                       <Col md={12} xs={24}>
                         <span className="admin-footer__copyright">
-                          © 2023<Link to="#">SovWare</Link>
+                          © 2025<Link to="#">PartenaireMAGB</Link>
                         </span>
-                      </Col>
-                      <Col md={12} xs={24}>
-                        <div className="admin-footer__links">
-                          <NavLink to="#">About</NavLink>
-                          <NavLink to="#">Team</NavLink>
-                          <NavLink to="#">Contact</NavLink>
-                        </div>
                       </Col>
                     </Row>
                   </FooterStyle>

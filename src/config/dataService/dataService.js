@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { notification } from 'antd';
+import { setupRetryInterceptor } from './retryInterceptor';
 import { getItem } from '../../utility/localStorageControl';
 
 const API_ENDPOINT = `${process.env.REACT_APP_API_ENDPOINT}`;
@@ -18,11 +19,15 @@ const openNotificationWithIcon = (type, message, description) => {
 const client = axios.create({
   baseURL: API_ENDPOINT,
   withCredentials: true,
+  timeout: 30000, // 30 secondes timeout
   headers: {
     Authorization: `Bearer ${getItem('access_token')}`,
     'Content-Type': 'application/json',
   },
 });
+
+// Configurer l'intercepteur de retry pour la gestion intelligente des erreurs
+setupRetryInterceptor(client);
 
 class DataService {
   static get(path = '') {
@@ -88,53 +93,55 @@ client.interceptors.response.use(
   (response) => response,
   (error) => {
     const { response } = error;
-    if (response) {
-      let errorMessage = 'Une erreur est survenue';
-      let description = 'Veuillez réessayer plus tard';
 
-      switch (response.status) {
-        case 400:
-          errorMessage = 'Requête incorrecte';
-          description = response.data?.message || 'Les données envoyées sont invalides';
-          break;
-        case 401:
-          errorMessage = 'Non autorisé';
-          description = response.data?.message || 'Veuillez vous connecter';
-          break;
-        case 403:
-          errorMessage = 'Accès refusé';
-          description = "Vous n'avez pas les permissions nécessaires";
-          break;
-        case 404:
-          errorMessage = 'Ressource non trouvée';
-          description = "La ressource demandée n'existe pas";
-          break;
-        case 500:
-          errorMessage = 'Erreur serveur';
-          description = 'Une erreur est survenue sur le serveur';
-          break;
-        default:
-          description = response.data?.message || description;
-      }
-      // Ajoutez les détails de l'erreur à l'objet error pour un traitement ultérieur
-      error.notification = {
-        message: errorMessage,
-        description,
-        show: true, // Permet de désactiver la notification dans des cas spécifiques
-      };
-      // Affiche la notification seulement si elle n'a pas été désactivée
-      if (error.notification.show) {
-        openNotificationWithIcon('error', errorMessage, description);
-      }
-    } else {
-      // Erreur réseau
-      error.notification = {
-        message: 'Erreur réseau',
-        description: 'Impossible de se connecter au serveur',
-        show: true,
-      };
-      openNotificationWithIcon('error', 'Erreur réseau', 'Impossible de se connecter au serveur');
+    // Ne pas gérer les erreurs 5xx et réseau - l'intercepteur de retry s'en charge
+    if (!response || (response.status >= 500 && response.status < 600)) {
+      return Promise.reject(error);
     }
+
+    // Gérer seulement les erreurs client (4xx)
+    let errorMessage = 'Une erreur est survenue';
+    let description = 'Veuillez réessayer plus tard';
+
+    switch (response.status) {
+      case 400:
+        errorMessage = 'Requête incorrecte';
+        description = response.data?.error || response.data?.message || 'Les données envoyées sont invalides';
+        break;
+      case 401:
+        errorMessage = 'Non autorisé';
+        description = response.data?.error || response.data?.message || 'Session expirée, veuillez vous reconnecter';
+        break;
+      case 403:
+        errorMessage = 'Accès refusé';
+        description = response.data?.error || response.data?.message || "Vous n'avez pas les permissions nécessaires";
+        break;
+      case 404:
+        errorMessage = 'Ressource non trouvée';
+        description = response.data?.error || response.data?.message || "La ressource demandée n'existe pas";
+        break;
+      case 422:
+        errorMessage = 'Données invalides';
+        description = response.data?.error || response.data?.message || 'Les données envoyées ne sont pas valides';
+        break;
+      case 429:
+        errorMessage = 'Trop de requêtes';
+        description = 'Vous avez fait trop de requêtes. Veuillez patienter avant de réessayer.';
+        break;
+      default:
+        description = response.data?.error || response.data?.message || description;
+    }
+
+    // Ajouter les détails de l'erreur pour traitement ultérieur
+    error.notification = {
+      message: errorMessage,
+      description,
+      show: true,
+    };
+
+    // Afficher la notification d'erreur
+    openNotificationWithIcon('error', errorMessage, description);
+
     return Promise.reject(error);
   },
 );
