@@ -236,7 +236,7 @@ function DonationCreate({ onSuccess, onCancel }) {
       // Combiner toutes les données
       const currentValues = form.getFieldsValue();
       const finalValues = { ...formData, ...currentValues };
-      
+
       console.log('📊 === DEBUG DONNÉES FINALES ===');
       console.log('formData:', formData);
       console.log('currentValues:', currentValues);
@@ -257,15 +257,17 @@ function DonationCreate({ onSuccess, onCancel }) {
 
       // Préparer les données avec validation stricte
       const parsedAmount = parseFloat(finalValues.amount);
+      // eslint-disable-next-line no-restricted-globals
       const validAmount = isNaN(parsedAmount) ? 100 : parsedAmount;
-      
+
       console.log('💰 === DEBUG MONTANT ===');
       console.log('finalValues.amount original:', finalValues.amount);
       console.log('parseFloat result:', parsedAmount);
+      // eslint-disable-next-line no-restricted-globals
       console.log('isNaN check:', isNaN(parsedAmount));
       console.log('final validAmount:', validAmount);
       console.log('=== FIN DEBUG MONTANT ===');
-      
+
       const donationData = {
         ...finalValues,
         amount: validAmount,
@@ -291,9 +293,9 @@ function DonationCreate({ onSuccess, onCancel }) {
       console.log('🚀 === ENVOI DONNÉES AU BACKEND ===');
       console.log('donationData:', donationData);
       console.log('=== FIN DEBUG ENVOI ===');
-      
+
       const result = await dispatch(donationCreateData(donationData));
-      
+
       console.log('✅ === RETOUR DU BACKEND ===');
       console.log('result:', result);
       console.log('result type:', typeof result);
