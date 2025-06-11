@@ -4,7 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9294643e-e426-4530-8ec2-abb8ffe7fcd3" name="Changes" comment="" />
+    <list default="true" id="9294643e-e426-4530-8ec2-abb8ffe7fcd3" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -13,6 +16,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "devrick225"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/devrick225/PartenaireMAGB-frontend.git",
+    "accountId": "bff6baa1-7245-4550-92f0-879927ab258e"
+  }
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 7
 }</component>
@@ -81,7 +96,7 @@
       <workItem from="1748650572242" duration="12302000" />
       <workItem from="1748946664274" duration="49171000" />
       <workItem from="1749517363344" duration="1727000" />
-      <workItem from="1749548238252" duration="21508000" />
+      <workItem from="1749548238252" duration="22735000" />
     </task>
     <servers />
   </component>
