@@ -62,7 +62,7 @@
   "scripts": {
     "start": "craco start",
     "prebuild": "npm install --legacy-peer-deps",
-    "build": "GENERATE_SOURCEMAP=false react-scripts --max-old-space-size=4096 build",
+    "build": "set \"GENERATE_SOURCEMAP=false\" && craco --max-old-space-size=4096 build",
     "test": "craco test",
     "eject": "craco eject"
   },
