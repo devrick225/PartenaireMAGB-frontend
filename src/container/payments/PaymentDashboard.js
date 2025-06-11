@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Row, Col, Card, Statistic, Table, Tag, Typography, Select, Space, Alert, Tooltip, List, Badge } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import moment from 'moment';
@@ -44,12 +44,24 @@ function PaymentDashboard() {
 
   const isAdmin = user?.role && ['admin', 'treasurer'].includes(user.role);
 
+  // Mémoriser les fonctions de chargement des données
+  const loadPaymentsList = useCallback(() => {
+    dispatch(getPaymentsList());
+  }, [dispatch]);
+
+  const loadPaymentStats = useCallback((period) => {
+    dispatch(getPaymentStats({ period }));
+  }, [dispatch]);
+
+  // Charger la liste des paiements une seule fois au montage
   useEffect(() => {
-    if (dispatch) {
-      dispatch(getPaymentsList());
-      dispatch(getPaymentStats({ period: selectedPeriod }));
-    }
-  }, [dispatch, selectedPeriod]);
+    loadPaymentsList();
+  }, [loadPaymentsList]);
+
+  // Charger les stats quand la période change
+  useEffect(() => {
+    loadPaymentStats(selectedPeriod);
+  }, [selectedPeriod, loadPaymentStats]);
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 

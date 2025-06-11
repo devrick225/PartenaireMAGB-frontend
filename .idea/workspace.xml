@@ -5,19 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="9294643e-e426-4530-8ec2-abb8ffe7fcd3" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/public/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/public/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/utilities/RolePermissionsHelp.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/utilities/RolePermissionsHelp.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/utilities/auth-info/info.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/utilities/auth-info/info.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/config/dataService/dataService.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/config/dataService/dataService.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/container/donations/DonationAdminDashboard.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/container/donations/DonationAdminDashboard.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/container/donations/DonationStats.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/container/donations/DonationStats.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/container/donations/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/container/donations/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/container/profile/authentication/overview/Signup.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/container/profile/authentication/overview/Signup.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/container/payments/PaymentDashboard.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/container/payments/PaymentDashboard.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/container/supports/TicketDashboard.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/container/supports/TicketDashboard.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/layout/withAdminLayout.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/layout/withAdminLayout.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/routes/admin/pages.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/routes/admin/pages.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/container/users/UserDashboard.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/container/users/UserDashboard.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/container/users/UserDetails.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/container/users/UserDetails.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/container/users/UsersList.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/container/users/UsersList.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/container/users/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/container/users/index.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -74,7 +71,7 @@
       <recent name="$PROJECT_DIR$/src/container/supports" />
     </key>
   </component>
-  <component name="RunManager" selected="npm.build">
+  <component name="RunManager" selected="npm.start">
     <configuration name="build" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
       <package-json value="$PROJECT_DIR$/package.json" />
       <command value="run" />
@@ -97,8 +94,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="npm.build" />
         <item itemvalue="npm.start" />
+        <item itemvalue="npm.build" />
       </list>
     </recent_temporary>
   </component>
@@ -119,7 +116,7 @@
       <workItem from="1748650572242" duration="12302000" />
       <workItem from="1748946664274" duration="49171000" />
       <workItem from="1749517363344" duration="1727000" />
-      <workItem from="1749548238252" duration="38220000" />
+      <workItem from="1749548238252" duration="42202000" />
     </task>
     <servers />
   </component>

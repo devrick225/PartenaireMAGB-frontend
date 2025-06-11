@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Row,
   Col,
@@ -73,7 +73,8 @@ function UserDetails({ userId, onBack }) {
     levels: state.users.levels,
   }));
 
-  useEffect(() => {
+  // Mémoriser les fonctions de chargement des données
+  const loadUserData = useCallback(() => {
     if (userId) {
       dispatch(getUserById(userId));
       dispatch(getUserStats(userId));
@@ -81,15 +82,23 @@ function UserDetails({ userId, onBack }) {
     }
   }, [dispatch, userId]);
 
-  const handleDonationTableChange = (pagination, filters) => {
-    const newFilters = {
-      page: pagination.current,
-      limit: pagination.pageSize,
-      ...filters,
-    };
-    setDonationFilters(newFilters);
-    dispatch(getUserDonations(userId, newFilters));
-  };
+  // Charger les données quand userId change
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
+
+  const handleDonationTableChange = useCallback(
+    (pagination, filters) => {
+      const newFilters = {
+        page: pagination.current,
+        limit: pagination.pageSize,
+        ...filters,
+      };
+      setDonationFilters(newFilters);
+      dispatch(getUserDonations(userId, newFilters));
+    },
+    [dispatch, userId],
+  );
 
   if (!selectedUser && !userLoading) {
     return (

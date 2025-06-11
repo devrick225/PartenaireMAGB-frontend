@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Row,
   Col,
@@ -64,12 +64,27 @@ function TicketDashboard() {
 
   const isAdmin = user?.role && ['admin', 'moderator', 'support_agent'].includes(user.role);
 
+  // Mémoriser les fonctions de chargement des données
+  const loadTicketsData = useCallback(() => {
+    dispatch(ticketReadData());
+  }, [dispatch]);
+
+  const loadTicketStats = useCallback(
+    (period) => {
+      dispatch(ticketGetStats({ period }));
+    },
+    [dispatch],
+  );
+
+  // Charger les données des tickets une seule fois au montage
   useEffect(() => {
-    if (dispatch) {
-      dispatch(ticketReadData());
-      dispatch(ticketGetStats({ period: selectedPeriod }));
-    }
-  }, [dispatch, selectedPeriod]);
+    loadTicketsData();
+  }, [loadTicketsData]);
+
+  // Charger les stats quand la période change
+  useEffect(() => {
+    loadTicketStats(selectedPeriod);
+  }, [selectedPeriod, loadTicketStats]);
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 

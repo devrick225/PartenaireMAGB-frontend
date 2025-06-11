@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Row, Col, Tabs, Spin, message, Button } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -15,10 +15,7 @@ import { PageHeader } from '../../components/page-headers/page-headers';
 import { Main } from '../styled';
 import { Cards } from '../../components/cards/frame/cards-frame';
 import { getUsersList, getUserProfile, getLeaderboard } from '../../redux/users/actionCreator';
-
-// Import du système de permissions
-// eslint-disable-next-line no-unused-vars
-import { usePermissions, PermissionGate, RoleIndicator, ROLES } from '../../components/utilities/protectedRoute';
+import { usePermissions, RoleIndicator, ROLES } from '../../components/utilities/protectedRoute';
 import RolePermissionsHelp from '../../components/utilities/RolePermissionsHelp';
 
 function Users() {
@@ -27,9 +24,7 @@ function Users() {
   const [showRoleHelp, setShowRoleHelp] = useState(false);
   const dispatch = useDispatch();
 
-  // Utiliser le système de permissions
-  // eslint-disable-next-line no-unused-vars
-  const { hasAnyRole, user, userRole } = usePermissions();
+  const { hasAnyRole, user } = usePermissions();
 
   const { usersLoading, usersError, profileLoading, leaderboardLoading } = useSelector((state) => ({
     usersLoading: state.users.usersLoading,
@@ -38,100 +33,121 @@ function Users() {
     leaderboardLoading: state.users.leaderboardLoading,
   }));
 
-  // Vérifier les permissions pour la gestion des utilisateurs
-  const canViewUsersList = hasAnyRole([ROLES.MODERATOR, ROLES.ADMIN]);
-  const canManageUsers = hasAnyRole([ROLES.ADMIN]);
+  // Permissions stables
+  const canViewUsersList = useMemo(() => hasAnyRole([ROLES.MODERATOR, ROLES.ADMIN]), [hasAnyRole]);
+  const canManageUsers = useMemo(() => hasAnyRole([ROLES.ADMIN]), [hasAnyRole]);
   // eslint-disable-next-line no-unused-vars
-  const canViewStatistics = hasAnyRole([ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN]);
+  const canViewStatistics = useMemo(() => hasAnyRole([ROLES.MODERATOR, ROLES.TREASURER, ROLES.ADMIN]), [hasAnyRole]);
 
-  const PageRoutes = [
-    {
-      path: 'index',
-      breadcrumbName: 'Tableau de bord',
-    },
-    {
-      path: '',
-      breadcrumbName: canViewUsersList ? 'Gestion des Utilisateurs' : 'Mon Espace',
-    },
-  ];
+  const PageRoutes = useMemo(
+    () => [
+      { path: 'index', breadcrumbName: 'Tableau de bord' },
+      { path: '', breadcrumbName: canViewUsersList ? 'Gestion des Utilisateurs' : 'Mon Espace' },
+    ],
+    [canViewUsersList],
+  );
 
-  useEffect(() => {
-    if (dispatch) {
-      // Charger les données initiales
-      dispatch(getUserProfile());
-      dispatch(getLeaderboard());
+  const loadUserProfile = useCallback(() => {
+    dispatch(getUserProfile());
+  }, [dispatch]);
 
-      // Charger la liste des utilisateurs seulement si autorisé
-      if (canViewUsersList) {
-        dispatch(getUsersList());
-      }
+  const loadLeaderboard = useCallback(() => {
+    dispatch(getLeaderboard('month'));
+  }, [dispatch]);
+
+  const loadUsersList = useCallback(() => {
+    if (canViewUsersList) {
+      dispatch(getUsersList());
     }
   }, [dispatch, canViewUsersList]);
 
   useEffect(() => {
-    if (usersError) {
-      message.error('Erreur lors du chargement des données utilisateurs');
-    }
-  }, [usersError]);
+    loadUserProfile();
+    loadLeaderboard();
+  }, [loadUserProfile, loadLeaderboard]);
 
-  const handleTabChange = (key) => {
+  useEffect(() => {
+    loadUsersList();
+  }, [loadUsersList]);
+
+  useEffect(() => {
+    if (usersError) {
+      console.error('Erreur utilisateurs:', usersError);
+      if (canViewUsersList) {
+        message.error('Erreur lors du chargement des données utilisateurs');
+      }
+    }
+  }, [usersError, canViewUsersList]);
+
+  // Gestion des erreurs de profil
+  const { profileError } = useSelector((state) => ({
+    profileError: state.users.profileError,
+  }));
+
+  useEffect(() => {
+    if (profileError) {
+      console.error('Erreur profil:', profileError);
+      message.error('Erreur lors du chargement de votre profil');
+    }
+  }, [profileError]);
+
+  const handleTabChange = useCallback((key) => {
     setActiveTab(key);
     setSelectedUserId(null);
-  };
+  }, []);
 
-  const handleViewUser = (userId) => {
+  const handleViewUser = useCallback((userId) => {
     setSelectedUserId(userId);
     setActiveTab('details');
-  };
+  }, []);
 
-  const tabItems = [
-    {
-      key: 'dashboard',
-      label: (
-        <span>
-          <DashboardOutlined />
-          Mon Tableau de Bord
-        </span>
-      ),
-      children: <UserDashboard />,
-    },
-  ];
+  const handleUserBack = useCallback(() => {
+    setSelectedUserId(null);
+    setActiveTab(canViewUsersList ? 'users' : 'dashboard');
+  }, [canViewUsersList]);
 
-  // Ajouter l'onglet liste des utilisateurs seulement pour les admins/modérateurs
-  if (canViewUsersList) {
-    tabItems.push({
-      key: 'users',
-      label: (
-        <span>
-          <UnorderedListOutlined />
-          Liste des Utilisateurs
-        </span>
-      ),
-      children: <UsersList onViewUser={handleViewUser} />,
-    });
-  }
+  const tabItems = useMemo(() => {
+    const items = [
+      {
+        key: 'dashboard',
+        label: (
+          <span>
+            <DashboardOutlined />
+            Mon Tableau de Bord
+          </span>
+        ),
+        children: <UserDashboard />,
+      },
+    ];
 
-  // Ajouter l'onglet détails si un utilisateur est sélectionné
-  if (selectedUserId) {
-    tabItems.push({
-      key: 'details',
-      label: (
-        <span>
-          <FileTextOutlined />
-          Détails Utilisateur
-        </span>
-      ),
-      children: (
-        <UserDetails
-          userId={selectedUserId}
-          onBack={() => {
-            setSelectedUserId(null);
-            setActiveTab(canViewUsersList ? 'users' : 'dashboard');
-          }}
-        />
-      ),
-    });
-  }
+    if (canViewUsersList) {
+      items.push({
+        key: 'users',
+        label: (
+          <span>
+            <UnorderedListOutlined />
+            Liste des Utilisateurs
+          </span>
+        ),
+        children: <UsersList onViewUser={handleViewUser} />,
+      });
+    }
+
+    if (selectedUserId) {
+      items.push({
+        key: 'details',
+        label: (
+          <span>
+            <FileTextOutlined />
+            Détails Utilisateur
+          </span>
+        ),
+        children: <UserDetails userId={selectedUserId} onBack={handleUserBack} />,
+      });
+    }
+
+    return items;
+  }, [canViewUsersList, selectedUserId, handleViewUser, handleUserBack]);
 
   if (profileLoading && activeTab === 'dashboard') {
     return (
@@ -154,7 +170,6 @@ function Users() {
           <Col span={24}>
             <Cards headless>
               <div style={{ padding: '20px' }}>
-                {/* Header avec résumé rapide */}
                 <div
                   style={{
                     display: 'flex',
@@ -183,7 +198,6 @@ function Users() {
                     </p>
                   </div>
 
-                  {/* Indicateurs de charge et actions */}
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     <Button
                       type="text"
@@ -198,7 +212,7 @@ function Users() {
                   </div>
                 </div>
 
-                {/* Messages informatifs selon le rôle */}
+                {/* Infos spécifiques selon le rôle */}
                 {!canViewUsersList && (
                   <div style={{ marginBottom: 20 }}>
                     <div
@@ -261,32 +275,12 @@ function Users() {
                   </div>
                 )}
 
-                {/* Onglets de navigation */}
-                <Tabs
-                  activeKey={activeTab}
-                  onChange={handleTabChange}
-                  type="line"
-                  tabPosition="top"
-                  items={tabItems}
-                  style={{
-                    '& .ant-tabs-nav': {
-                      marginBottom: 24,
-                    },
-                    '& .ant-tabs-tab': {
-                      padding: '12px 16px',
-                      fontSize: 14,
-                    },
-                    '& .ant-tabs-content-holder': {
-                      padding: '0 4px',
-                    },
-                  }}
-                />
+                <Tabs activeKey={activeTab} onChange={handleTabChange} type="line" tabPosition="top" items={tabItems} />
               </div>
             </Cards>
           </Col>
         </Row>
 
-        {/* Modal d'aide pour les rôles et permissions */}
         <RolePermissionsHelp visible={showRoleHelp} onClose={() => setShowRoleHelp(false)} />
       </Main>
     </>

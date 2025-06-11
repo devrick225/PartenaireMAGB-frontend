@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Table,
   Button,
@@ -59,28 +59,38 @@ function UsersList({ onViewUser }) {
     roles: state.users.roles,
   }));
 
+  const loadUsers = useCallback(
+    (newFilters = {}) => {
+      dispatch(getUsersList({ ...filters, ...newFilters }));
+    },
+    [dispatch, filters],
+  );
+
   useEffect(() => {
     // eslint-disable-next-line no-use-before-define
     loadUsers();
-  }, []);
+  }, [loadUsers]);
 
-  const loadUsers = (newFilters = {}) => {
-    dispatch(getUsersList({ ...filters, ...newFilters }));
-  };
-
-  const handleFilterChange = (key, value) => {
-    const newFilters = { ...filters, [key]: value };
-    setFilters(newFilters);
-    loadUsers(newFilters);
-  };
+  const handleFilterChange = useCallback(
+    (key, value) => {
+      const newFilters = { ...filters, [key]: value };
+      setFilters(newFilters);
+      loadUsers(newFilters);
+    },
+    [filters, loadUsers],
+  );
 
   // eslint-disable-next-line no-shadow
-  const handleTableChange = (pagination) => {
-    loadUsers({
-      page: pagination.current,
-      limit: pagination.pageSize,
-    });
-  };
+  const handleTableChange = useCallback(
+    // eslint-disable-next-line no-shadow
+    (pagination) => {
+      loadUsers({
+        page: pagination.current,
+        limit: pagination.pageSize,
+      });
+    },
+    [loadUsers],
+  );
 
   const handleRoleUpdate = (user) => {
     setSelectedUser(user);

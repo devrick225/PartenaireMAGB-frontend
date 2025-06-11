@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { 
   Row, 
   Col, 
@@ -72,7 +72,9 @@ function DonationAdminDashboard() {
   const [refundModalVisible, setRefundModalVisible] = useState(false);
   const [selectedDonation, setSelectedDonation] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState(null);
+  
+  // Utiliser useRef pour l'interval au lieu de state
+  const refreshIntervalRef = useRef(null);
 
   const dispatch = useDispatch();
   const { hasRole, hasPermission, isAdmin, isTreasurer, isModerator } = usePermissions();
@@ -101,22 +103,8 @@ function DonationAdminDashboard() {
     { path: '', breadcrumbName: 'Administration Donations' }
   ];
 
-  useEffect(() => {
-    loadData();
-  }, [selectedPeriod, filterCategory, filterStatus]);
-
-  // useEffect séparé pour l'auto-refresh qui ne dépend pas des filtres
-  useEffect(() => {
-    setupAutoRefresh();
-
-    return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-      }
-    };
-  }, []); // Pas de dépendances pour éviter de recréer l'intervalle
-
-  const loadData = async () => {
+  // Mémoriser loadData avec useCallback
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       await Promise.all([
@@ -133,30 +121,40 @@ function DonationAdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dispatch, filterStatus, filterCategory, selectedPeriod]);
 
-  const setupAutoRefresh = () => {
+  // Mémoriser setupAutoRefresh avec useCallback
+  const setupAutoRefresh = useCallback(() => {
     // Nettoyer l'ancien intervalle s'il existe
-    if (refreshInterval) {
-      clearInterval(refreshInterval);
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
     }
     
-    // Refresh automatique toutes les 30 secondes
-    const interval = setInterval(() => {
+    // Refresh automatique toutes les 30 secondes - SEULEMENT les stats, pas tout
+    refreshIntervalRef.current = setInterval(() => {
       if (!donationsLoading && !paymentsLoading) {
-        // Ne pas appeler loadData() pour éviter la boucle, juste les stats
+        // Ne charger que les stats pour éviter les appels excessifs
         dispatch(donationStatsReadData({ period: selectedPeriod }));
         dispatch(getPaymentStats({ period: selectedPeriod }));
       }
     }, 30000);
+  }, [dispatch, selectedPeriod, donationsLoading, paymentsLoading]);
 
-    setRefreshInterval(interval);
-  };
+  // useEffect pour charger les données au changement des filtres
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-  // Fonction pour forcer le refresh manuel
-  const handleManualRefresh = async () => {
-    await loadData();
-  };
+  // useEffect séparé pour l'auto-refresh 
+  useEffect(() => {
+    setupAutoRefresh();
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, [setupAutoRefresh]);
 
   const handleExportData = async () => {
     try {
@@ -558,7 +556,7 @@ function DonationAdminDashboard() {
                 <Space>
                   <Button 
                     icon={<ReloadOutlined />}
-                    onClick={handleManualRefresh}
+                    onClick={loadData}
                     loading={loading}
                   >
                     Actualiser

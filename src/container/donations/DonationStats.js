@@ -1,5 +1,5 @@
 /* eslint no-underscore-dangle: 0 */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card, Row, Col, Statistic, Typography, DatePicker, Select, Space, Button, Alert, Spin } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import { DollarOutlined, TeamOutlined, BarChartOutlined, LineChartOutlined, SyncOutlined } from '@ant-design/icons';
@@ -17,21 +17,14 @@ function DonationStats() {
 
   const dispatch = useDispatch();
 
-  const { stats, statsLoading, statsError } = useSelector((state) => {
-    console.log('=== DEBUG STATS REDUX ===');
-    console.log('state.donations.stats:', state.donations.stats);
-    console.log('statsLoading:', state.donations.statsLoading);
-    console.log('statsError:', state.donations.statsError);
-    console.log('========================');
+  const { stats, statsLoading, statsError } = useSelector((state) => ({
+    stats: state.donations.stats,
+    statsLoading: state.donations.statsLoading,
+    statsError: state.donations.statsError,
+  }));
 
-    return {
-      stats: state.donations.stats,
-      statsLoading: state.donations.statsLoading,
-      statsError: state.donations.statsError,
-    };
-  });
-
-  const loadStats = () => {
+  // Mémoriser loadStats avec useCallback pour éviter les re-renders excessifs
+  const loadStats = useCallback(() => {
     const filters = {};
 
     // Ajouter la période sélectionnée
@@ -49,20 +42,13 @@ function DonationStats() {
       filters.category = selectedCategory;
     }
 
-    console.log('Chargement stats avec filtres:', filters);
     dispatch(donationStatsReadData(filters));
-  };
+  }, [dispatch, selectedPeriod, selectedCategory, dateRange]);
 
+  // useEffect principal pour charger les stats
   useEffect(() => {
     loadStats();
-  }, [selectedPeriod, selectedCategory]);
-
-  // Gestion des dates custom
-  useEffect(() => {
-    if (selectedPeriod === 'custom') {
-      loadStats();
-    }
-  }, [dateRange]);
+  }, [loadStats]);
 
   const categoryLabels = {
     tithe: 'Dîme',

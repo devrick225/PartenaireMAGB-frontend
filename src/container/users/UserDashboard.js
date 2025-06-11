@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Row,
   Col,
@@ -14,6 +14,7 @@ import {
   Space,
   Timeline,
   Alert,
+  Spin,
 } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -28,7 +29,6 @@ import {
 } from '@ant-design/icons';
 import moment from 'moment';
 import {
-  getUserProfile,
   getUserStats,
   getLeaderboard,
   formatCurrency,
@@ -52,45 +52,119 @@ function UserDashboard() {
     userRank,
     totalParticipants,
     levels,
+    profileLoading,
+    profileError,
+    statsError,
   } = useSelector((state) => ({
     currentProfile: state.users.currentProfile,
     userStats: state.users.userStats,
     statsLoading: state.users.statsLoading,
-    leaderboard: state.users.leaderboard,
+    leaderboard: state.users.leaderboard || [],
     leaderboardLoading: state.users.leaderboardLoading,
     userRank: state.users.userRank,
     totalParticipants: state.users.totalParticipants,
-    levels: state.users.levels,
+    levels: state.users.levels || [],
+    profileLoading: state.users.profileLoading,
+    profileError: state.users.profileError,
+    statsError: state.users.statsError,
   }));
 
-  useEffect(() => {
-    if (dispatch) {
-      dispatch(getUserProfile());
-      // Utiliser l'ID utilisateur connecté pour les stats
-      const currentUserId = currentProfile?.user?.id;
-      if (currentUserId) {
-        dispatch(getUserStats(currentUserId));
+  // Mémoriser la fonction de chargement des stats utilisateur (SEULEMENT)
+  const loadUserStats = useCallback(
+    (userId) => {
+      if (userId) {
+        dispatch(getUserStats(userId));
       }
-      dispatch(getLeaderboard(leaderboardPeriod));
+    },
+    [dispatch],
+  );
+
+  // Fonction pour charger le leaderboard avec une période spécifique
+  const loadLeaderboardWithPeriod = useCallback(
+    (period) => {
+      // Seulement si la période est différente de 'month' (défaut)
+      if (period !== 'month') {
+        dispatch(getLeaderboard(period));
+      }
+    },
+    [dispatch],
+  );
+
+  // NE PAS charger le profil - c'est fait par users/index.js
+  // Charger SEULEMENT les stats quand l'ID utilisateur est disponible
+  useEffect(() => {
+    const currentUserId = currentProfile?.user?.id;
+    if (currentUserId) {
+      loadUserStats(currentUserId);
     }
-  }, [dispatch, leaderboardPeriod, currentProfile?.user?.id]);
+  }, [currentProfile?.user?.id, loadUserStats]);
 
-  const handleLeaderboardPeriodChange = (period) => {
+  // Charger le leaderboard SEULEMENT si la période change (pas au montage initial)
+  useEffect(() => {
+    if (leaderboardPeriod !== 'month') {
+      loadLeaderboardWithPeriod(leaderboardPeriod);
+    }
+  }, [leaderboardPeriod, loadLeaderboardWithPeriod]);
+
+  const handleLeaderboardPeriodChange = useCallback((period) => {
     setLeaderboardPeriod(period);
-    dispatch(getLeaderboard(period));
-  };
+  }, []);
 
-  // Calculer le niveau actuel et les badges
-  const currentLevel = currentProfile?.user ? calculateUserLevel(currentProfile.user.points) : levels[0];
-  const nextLevel = levels.find((level) => level.level === currentLevel.level + 1);
-  const badges = userStats ? generateUserBadges(userStats) : [];
+  // Gestion sécurisée des données utilisateur
+  const currentUser = currentProfile?.user || {};
+  const safeUserStats = userStats || {};
+  const safeLevels =
+    levels.length > 0
+      ? levels
+      : [{ level: 1, name: 'Nouveau membre', minPoints: 0, color: '#d9d9d9', benefits: ['Accès de base'] }];
+
+  // Calculer le niveau actuel et les badges avec des gardes de sécurité
+  const currentLevel = currentUser.points !== undefined ? calculateUserLevel(currentUser.points) : safeLevels[0];
+
+  const nextLevel = safeLevels.find((level) => level.level === currentLevel.level + 1);
+  const badges = Object.keys(safeUserStats).length > 0 ? generateUserBadges(safeUserStats) : [];
 
   // Progression vers le niveau suivant
   const progressToNextLevel = nextLevel
-    ? (((currentProfile?.user?.points || 0) - currentLevel.minPoints) /
-        (nextLevel.minPoints - currentLevel.minPoints)) *
-      100
+    ? (((currentUser.points || 0) - currentLevel.minPoints) / (nextLevel.minPoints - currentLevel.minPoints)) * 100
     : 100;
+
+  // Gestion des erreurs
+  if (profileError) {
+    return (
+      <Alert
+        message="Erreur de chargement"
+        description={`Impossible de charger votre profil: ${profileError}`}
+        type="error"
+        showIcon
+        style={{ marginBottom: 24 }}
+      />
+    );
+  }
+
+  // Affichage de chargement
+  if (profileLoading && !currentProfile) {
+    return (
+      <div style={{ textAlign: 'center', padding: '50px 0' }}>
+        <Spin size="large" />
+        <br />
+        <Text type="secondary">Chargement de votre profil...</Text>
+      </div>
+    );
+  }
+
+  // Vérification que l'utilisateur est bien chargé
+  if (!currentProfile || !currentUser.id) {
+    return (
+      <Alert
+        message="Profil non disponible"
+        description="Votre profil n'a pas pu être chargé. Veuillez rafraîchir la page."
+        type="warning"
+        showIcon
+        style={{ marginBottom: 24 }}
+      />
+    );
+  }
 
   return (
     <div>
@@ -100,30 +174,33 @@ function UserDashboard() {
           <Col>
             <Avatar
               size={80}
-              src={currentProfile?.user?.avatar}
+              src={currentUser.avatar}
               icon={<UserOutlined />}
-              style={{ border: `3px solid ${currentLevel?.color}` }}
+              style={{ border: `3px solid ${currentLevel?.color || '#d9d9d9'}` }}
             />
           </Col>
           <Col flex="auto">
             <div>
               <Title level={3} style={{ margin: 0 }}>
-                {currentProfile?.user?.firstName} {currentProfile?.user?.lastName}
-                <Tag color={currentLevel?.color} style={{ marginLeft: 12 }}>
-                  {currentLevel?.name}
+                {currentUser.firstName || 'Prénom'} {currentUser.lastName || 'Nom'}
+                <Tag color={currentLevel?.color || 'default'} style={{ marginLeft: 12 }}>
+                  {currentLevel?.name || 'Nouveau membre'}
                 </Tag>
               </Title>
               <Text type="secondary" style={{ fontSize: 16 }}>
-                {currentProfile?.user?.email}
+                {currentUser.email || 'Email non disponible'}
               </Text>
               <br />
               <Space style={{ marginTop: 8 }}>
                 <Text>
                   <StarOutlined style={{ color: '#faad14' }} />
-                  {currentProfile?.user?.points || 0} points
+                  {currentUser.points || 0} points
                 </Text>
                 <Text>•</Text>
-                <Text>Membre depuis {moment(currentProfile?.user?.createdAt).format('MMMM YYYY')}</Text>
+                <Text>
+                  Membre depuis{' '}
+                  {currentUser.createdAt ? moment(currentUser.createdAt).format('MMMM YYYY') : 'Date inconnue'}
+                </Text>
               </Space>
             </div>
           </Col>
@@ -144,14 +221,14 @@ function UserDashboard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <Text>Progression vers {nextLevel.name}</Text>
               <Text>
-                {currentProfile?.user?.points || 0} / {nextLevel.minPoints} points
+                {currentUser.points || 0} / {nextLevel.minPoints} points
               </Text>
             </div>
             <Progress
-              percent={Math.min(progressToNextLevel, 100)}
+              percent={Math.min(Math.max(progressToNextLevel, 0), 100)}
               strokeColor={{
-                '0%': currentLevel.color,
-                '100%': nextLevel.color,
+                '0%': currentLevel.color || '#d9d9d9',
+                '100%': nextLevel.color || '#52c41a',
               }}
               showInfo={false}
             />
@@ -163,53 +240,60 @@ function UserDashboard() {
         {/* Statistiques personnelles */}
         <Col xs={24} lg={16}>
           <Card title="Mes statistiques" loading={statsLoading}>
-            <Row gutter={16}>
-              <Col xs={24} sm={12} md={6}>
-                <Statistic
-                  title="Total donné"
-                  value={userStats?.totalDonations || 0}
-                  formatter={(value) => formatCurrency(value, currentProfile?.user?.currency)}
-                  prefix={<DollarOutlined />}
-                  valueStyle={{ color: '#52c41a', fontSize: '20px' }}
-                />
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Statistic
-                  title="Nombre de dons"
-                  value={userStats?.donationCount || 0}
-                  prefix={<GiftOutlined />}
-                  valueStyle={{ color: '#1890ff', fontSize: '20px' }}
-                />
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Statistic
-                  title="Don moyen"
-                  value={userStats?.averageDonation || 0}
-                  formatter={(value) => formatCurrency(value, currentProfile?.user?.currency)}
-                  prefix={<RiseOutlined />}
-                  valueStyle={{ color: '#722ed1', fontSize: '20px' }}
-                />
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Statistic
-                  title="Dons récurrents"
-                  value={userStats?.activeRecurringDonations || 0}
-                  prefix={<ThunderboltOutlined />}
-                  valueStyle={{ color: '#fa8c16', fontSize: '20px' }}
-                />
-              </Col>
-            </Row>
+            {statsError ? (
+              <Alert message="Erreur de chargement des statistiques" description={statsError} type="warning" showIcon />
+            ) : (
+              <>
+                <Row gutter={16}>
+                  <Col xs={24} sm={12} md={6}>
+                    <Statistic
+                      title="Total donné"
+                      value={safeUserStats.totalDonations || 0}
+                      formatter={(value) => formatCurrency(value, currentUser.currency || 'XOF')}
+                      prefix={<DollarOutlined />}
+                      valueStyle={{ color: '#52c41a', fontSize: '20px' }}
+                    />
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Statistic
+                      title="Nombre de dons"
+                      value={safeUserStats.donationCount || 0}
+                      prefix={<GiftOutlined />}
+                      valueStyle={{ color: '#1890ff', fontSize: '20px' }}
+                    />
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Statistic
+                      title="Don moyen"
+                      value={safeUserStats.averageDonation || 0}
+                      formatter={(value) => formatCurrency(value, currentUser.currency || 'XOF')}
+                      prefix={<RiseOutlined />}
+                      valueStyle={{ color: '#722ed1', fontSize: '20px' }}
+                    />
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Statistic
+                      title="Dons récurrents"
+                      value={safeUserStats.activeRecurringDonations || 0}
+                      prefix={<ThunderboltOutlined />}
+                      valueStyle={{ color: '#fa8c16', fontSize: '20px' }}
+                    />
+                  </Col>
+                </Row>
 
-            {/* Dernier don */}
-            {userStats?.lastDonation && (
-              <div style={{ marginTop: 24, padding: 16, backgroundColor: '#f8f9fa', borderRadius: 6 }}>
-                <Text strong>Dernier don:</Text>
-                <br />
-                <Text>
-                  {formatCurrency(userStats.lastDonation.amount, userStats.lastDonation.currency)} •
-                  {userStats.lastDonation.category} •{moment(userStats.lastDonation.date).format('DD/MM/YYYY')}
-                </Text>
-              </div>
+                {/* Dernier don */}
+                {safeUserStats.lastDonation && (
+                  <div style={{ marginTop: 24, padding: 16, backgroundColor: '#f8f9fa', borderRadius: 6 }}>
+                    <Text strong>Dernier don:</Text>
+                    <br />
+                    <Text>
+                      {formatCurrency(safeUserStats.lastDonation.amount, safeUserStats.lastDonation.currency || 'XOF')}{' '}
+                      •{safeUserStats.lastDonation.category} •
+                      {moment(safeUserStats.lastDonation.date).format('DD/MM/YYYY')}
+                    </Text>
+                  </div>
+                )}
+              </>
             )}
           </Card>
 
@@ -267,49 +351,57 @@ function UserDashboard() {
             }
             loading={leaderboardLoading}
           >
-            <List
-              dataSource={leaderboard}
-              renderItem={(item, index) => (
-                <List.Item style={{ padding: '8px 0' }}>
-                  <List.Item.Meta
-                    avatar={
-                      <Badge
-                        count={index + 1}
-                        style={{
-                          backgroundColor: index < 3 ? ['#ffd700', '#c0c0c0', '#cd7f32'][index] : '#d9d9d9',
-                          color: index < 3 ? '#000' : '#fff',
-                        }}
-                      >
-                        <Avatar src={item.avatar} icon={<UserOutlined />} size={40} />
-                      </Badge>
-                    }
-                    title={
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Text strong>
-                          {item.firstName} {item.lastName}
-                        </Text>
-                        {item.level && (
-                          <Tag size="small" color={levels.find((l) => l.level === item.level)?.color}>
-                            Niv. {item.level}
-                          </Tag>
-                        )}
-                      </div>
-                    }
-                    description={
-                      <div>
-                        <Text strong style={{ color: '#52c41a' }}>
-                          {formatCurrency(item.totalAmount || 0)}
-                        </Text>
-                        <br />
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                          {item.donationCount || 0} donation{(item.donationCount || 0) > 1 ? 's' : ''}
-                        </Text>
-                      </div>
-                    }
-                  />
-                </List.Item>
-              )}
-            />
+            {leaderboard.length > 0 ? (
+              <List
+                dataSource={leaderboard}
+                renderItem={(item, index) => (
+                  <List.Item style={{ padding: '8px 0' }}>
+                    <List.Item.Meta
+                      avatar={
+                        <Badge
+                          count={index + 1}
+                          style={{
+                            backgroundColor: index < 3 ? ['#ffd700', '#c0c0c0', '#cd7f32'][index] : '#d9d9d9',
+                            color: index < 3 ? '#000' : '#fff',
+                          }}
+                        >
+                          <Avatar src={item.avatar} icon={<UserOutlined />} size={40} />
+                        </Badge>
+                      }
+                      title={
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Text strong>
+                            {item.firstName || 'Prénom'} {item.lastName || 'Nom'}
+                          </Text>
+                          {item.level && safeLevels.length > 0 && (
+                            <Tag size="small" color={safeLevels.find((l) => l.level === item.level)?.color}>
+                              Niv. {item.level}
+                            </Tag>
+                          )}
+                        </div>
+                      }
+                      description={
+                        <div>
+                          <Text strong style={{ color: '#52c41a' }}>
+                            {formatCurrency(item.totalAmount || 0, 'XOF')}
+                          </Text>
+                          <br />
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            {item.donationCount || 0} donation{(item.donationCount || 0) > 1 ? 's' : ''}
+                          </Text>
+                        </div>
+                      }
+                    />
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <TrophyOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />
+                <br />
+                <Text type="secondary">Aucun classement disponible</Text>
+              </div>
+            )}
 
             {/* Position de l'utilisateur actuel */}
             {userRank && userRank > 10 && (
@@ -331,43 +423,50 @@ function UserDashboard() {
 
           {/* Niveaux et avantages */}
           <Card title="Niveaux et avantages" style={{ marginTop: 16 }}>
-            <Timeline>
-              {levels.map((level) => (
-                <Timeline.Item
-                  key={level.level}
-                  color={level.color}
-                  dot={
-                    currentLevel.level >= level.level ? (
-                      <CheckCircleOutlined style={{ fontSize: 16 }} />
-                    ) : (
-                      <div
-                        style={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: '50%',
-                          backgroundColor: level.color,
-                          opacity: 0.3,
-                        }}
-                      />
-                    )
-                  }
-                >
-                  <div>
-                    <Text strong>{level.name}</Text>
-                    <br />
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      {level.minPoints} points
-                    </Text>
-                    <br />
-                    {level.benefits.map((benefit, idx) => (
-                      <Tag key={idx} size="small" style={{ marginTop: 4 }}>
-                        {benefit}
-                      </Tag>
-                    ))}
-                  </div>
-                </Timeline.Item>
-              ))}
-            </Timeline>
+            {safeLevels.length > 0 ? (
+              <Timeline>
+                {safeLevels.map((level) => (
+                  <Timeline.Item
+                    key={level.level}
+                    color={level.color}
+                    dot={
+                      currentLevel.level >= level.level ? (
+                        <CheckCircleOutlined style={{ fontSize: 16 }} />
+                      ) : (
+                        <div
+                          style={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: '50%',
+                            backgroundColor: level.color,
+                            opacity: 0.3,
+                          }}
+                        />
+                      )
+                    }
+                  >
+                    <div>
+                      <Text strong>{level.name}</Text>
+                      <br />
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {level.minPoints} points
+                      </Text>
+                      <br />
+                      {level.benefits &&
+                        level.benefits.map((benefit, idx) => (
+                          <Tag key={idx} size="small" style={{ marginTop: 4 }}>
+                            {benefit}
+                          </Tag>
+                        ))}
+                    </div>
+                  </Timeline.Item>
+                ))}
+              </Timeline>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <Text type="secondary">Système de niveaux en cours de chargement...</Text>
+              </div>
+            )}
           </Card>
         </Col>
       </Row>
