@@ -11,7 +11,7 @@ import { apiRequest } from '@/lib/api';
 export default function PaymentCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { refreshFinancialData } = useAuth();
+  const { refreshFinancialData, user } = useAuth();
 
   // MoneyFusion envoie: donationId + token (parfois token apparaît 2x dans l'URL)
   const donationId = searchParams.get('donationId');
@@ -44,7 +44,8 @@ export default function PaymentCallback() {
 
         if (p.status === 'completed') {
           setPaymentStatus('completed');
-          await refreshFinancialData();
+          // Rafraîchir seulement si connecté
+          if (user) await refreshFinancialData();
         } else if (['failed', 'cancelled', 'expired'].includes(p.status)) {
           setPaymentStatus('failed');
         } else {
@@ -58,7 +59,7 @@ export default function PaymentCallback() {
     } finally {
       setLoading(false);
     }
-  }, [donationId, refreshFinancialData]);
+  }, [donationId, refreshFinancialData, user]);
 
   useEffect(() => { void checkPayment(); }, [checkPayment]);
 
@@ -86,12 +87,12 @@ export default function PaymentCallback() {
 
   if (loading) {
     return (
-      <AppLayout>
-        <div className="container max-w-lg py-16 px-4 text-center animate-fade-in">
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center animate-fade-in">
           <Loader2 className="w-12 h-12 mx-auto text-primary animate-spin mb-4" />
           <p className="text-muted-foreground">Vérification du paiement...</p>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
@@ -117,8 +118,8 @@ export default function PaymentCallback() {
   const Icon = c.icon;
 
   return (
-    <AppLayout>
-      <div className="container max-w-lg py-16 px-4 animate-fade-in">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-lg animate-fade-in">
         <Card className="border-border overflow-hidden">
           <CardContent className="p-0">
             <div className={`${c.bg} p-8 text-center`}>
@@ -170,14 +171,14 @@ export default function PaymentCallback() {
                     Réessayer un don
                   </Button>
                 )}
-                <Button variant="outline" onClick={() => navigate('/dashboard')} className="w-full gap-2">
-                  <ArrowLeft className="w-4 h-4" /> Retour au tableau de bord
+                <Button variant="outline" onClick={() => navigate(user ? '/dashboard' : '/login')} className="w-full gap-2">
+                  <ArrowLeft className="w-4 h-4" /> {user ? 'Retour au tableau de bord' : 'Se connecter'}
                 </Button>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
-    </AppLayout>
+    </div>
   );
 }

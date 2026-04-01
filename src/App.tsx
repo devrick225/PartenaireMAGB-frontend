@@ -54,8 +54,8 @@ const AnimatedRoutes = () => {
         <Route path="/profile" element={<ProtectedRoute><PageTransition><Profile /></PageTransition></ProtectedRoute>} />
         <Route path="/donations" element={<ProtectedRoute><PageTransition><Donations /></PageTransition></ProtectedRoute>} />
         <Route path="/paiements" element={<ProtectedRoute><PageTransition><Payments /></PageTransition></ProtectedRoute>} />
-        <Route path="/paiements/callback" element={<ProtectedRoute><PageTransition><PaymentCallback /></PageTransition></ProtectedRoute>} />
-        <Route path="/callback" element={<ProtectedRoute><PageTransition><PaymentCallback /></PageTransition></ProtectedRoute>} />
+        <Route path="/paiements/callback" element={<PageTransition><PaymentCallback /></PageTransition>} />
+        <Route path="/callback" element={<PageTransition><PaymentCallback /></PageTransition>} />
         <Route path="/documents" element={<ProtectedRoute><PageTransition><Documents /></PageTransition></ProtectedRoute>} />
         <Route path="/support" element={<ProtectedRoute><PageTransition><Tickets /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/utilisateurs" element={<ProtectedRoute><PageTransition><AdminUsers /></PageTransition></ProtectedRoute>} />
