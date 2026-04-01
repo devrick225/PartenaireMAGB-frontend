@@ -352,8 +352,8 @@ export default function Donations() {
     setActivePaymentId(init.paymentId || null);
 
     if (init.paymentUrl) {
-      window.open(init.paymentUrl, '_blank', 'noopener,noreferrer');
-      toast.success('Paiement initialisé. Finalisez-le dans la fenêtre ouverte.');
+      // Rediriger directement vers MoneyFusion (window.open est bloqué après un await)
+      window.location.href = init.paymentUrl;
     } else {
       toast.success('Paiement initialisé avec succès.');
     }
