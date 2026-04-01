@@ -17,8 +17,6 @@ import { Heart, CalendarIcon, CheckCircle, ListOrdered, Plus, Download, FileText
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format, addMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import DataPagination from '@/components/DataPagination';
 import PageLoader from '@/components/PageLoader';
 
@@ -102,9 +100,10 @@ export default function Donations() {
 
   const lastPaymentRef = useRef<string>(`PAY-${Date.now().toString().slice(-8)}`);
 
-  const generateReceipt = () => {
+  const generateReceipt = async () => {
     const c = pendingContribution.current;
     if (!c) return;
+    const { default: jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     const ref = lastPaymentRef.current;
     const now = new Date();
@@ -228,7 +227,9 @@ export default function Donations() {
     toast.success('Export CSV téléchargé');
   };
 
-  const exportPDF = () => {
+  const exportPDF = async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
     const doc = new jsPDF();
     doc.setFontSize(18);
     doc.text('Historique de mes dons', 14, 22);
@@ -475,7 +476,7 @@ export default function Donations() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={exportPDF} className="gap-2 cursor-pointer">
+                    <DropdownMenuItem onClick={() => void exportPDF()} className="gap-2 cursor-pointer">
                       <FileText className="w-4 h-4" /> Exporter en PDF
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={exportCSV} className="gap-2 cursor-pointer">
@@ -811,7 +812,7 @@ export default function Donations() {
                   {pendingContribution.current ? formatMontant(pendingContribution.current.montant, pendingContribution.current.devise) : ''} — Réf: {lastPaymentRef.current}
                 </p>
                 <div className="flex gap-3 mt-4">
-                  <Button variant="outline" onClick={generateReceipt} className="flex-1 gap-2">
+                  <Button variant="outline" onClick={() => void generateReceipt()} className="flex-1 gap-2">
                     <Download className="w-4 h-4" /> Télécharger le reçu
                   </Button>
                   <Button onClick={closePaymentDialog} className="flex-1">
