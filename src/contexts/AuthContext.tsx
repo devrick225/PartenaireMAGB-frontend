@@ -563,7 +563,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             currency: c.devise === 'USD' ? 'USD' : 'XOF',
             category: type === 'one_time' ? 'don_ponctuel' : (categoryMap[c.frequence || 'mensuelle'] || 'don_mensuel'),
             type,
-            paymentMethod: 'mobile_money',
+            paymentMethod: 'moneyfusion',
             recurring: type === 'recurring' ? {
               frequency: frequencyMap[c.frequence || 'mensuelle'] || 'monthly',
               interval: recurringInterval,
