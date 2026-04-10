@@ -17,6 +17,8 @@ import { apiRequest } from '@/lib/api';
 import DataPagination from '@/components/DataPagination';
 import PageLoader from '@/components/PageLoader';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
+import MobileTickets from '@/pages/mobile/MobileTickets';
 
 const CATEGORIES = [
   { value: 'technical', label: 'Technique' },
@@ -52,6 +54,7 @@ export default function Tickets() {
   const [newComment, setNewComment] = useState('');
   const [sendingComment, setSendingComment] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
+  const isMobile = useIsMobile();
 
   const loadTickets = async () => {
     setLoading(true);
@@ -108,9 +111,11 @@ export default function Tickets() {
 
   if (isDataLoading || loading) return <AppLayout><PageLoader message="Chargement des tickets..." /></AppLayout>;
 
+  if (isMobile) return <AppLayout><MobileTickets /></AppLayout>;
+
   return (
     <AppLayout>
-      <div className="container max-w-4xl py-8 px-4 animate-fade-in">
+      <div className="container max-w-6xl py-8 px-4 animate-fade-in">
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1">

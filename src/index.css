@@ -110,3 +110,21 @@
     font-family: 'Playfair Display', serif;
   }
 }
+
+/* PWA Safe Areas */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Smooth scrolling on mobile */
+@media (max-width: 768px) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    overscroll-behavior: none;
+  }
+}

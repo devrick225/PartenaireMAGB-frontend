@@ -19,9 +19,12 @@ import { format, addMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import DataPagination from '@/components/DataPagination';
 import PageLoader from '@/components/PageLoader';
+import { useIsMobile } from '@/hooks/use-mobile';
+import MobileDonations from '@/pages/mobile/MobileDonations';
 
 export default function Donations() {
   const { user, contributions, payments, addContribution, initializePayment, verifyPaymentStatus, isDataLoading } = useAuth();
+  const isMobile = useIsMobile();
   const [type, setType] = useState<'ponctuelle' | 'recurrente'>('ponctuelle');
   const [frequence, setFrequence] = useState<'mensuelle' | 'trimestrielle' | 'semestrielle' | 'annuelle'>('mensuelle');
   const [montant, setMontant] = useState('');
@@ -191,6 +194,7 @@ export default function Donations() {
   };
 
   const minAmount = devise === 'FCFA' ? 200 : 1;
+  const maxAmount = devise === 'FCFA' ? 2_000_000 : 3_500; // 2M FCFA ≈ 3500 USD
 
   const formatMontant = (m: number, d: string) =>
     d === 'USD' ? `$${m.toLocaleString()}` : `${m.toLocaleString()} FCFA`;
@@ -289,6 +293,10 @@ export default function Donations() {
       toast.error(`Le montant minimum est de ${minAmount.toLocaleString()} ${devise}`);
       return;
     }
+    if (amt > maxAmount) {
+      toast.error(`Le montant maximum est de ${maxAmount.toLocaleString()} ${devise}`);
+      return;
+    }
     if (!selectedDate) {
       toast.error('Veuillez sélectionner une date');
       return;
@@ -337,22 +345,55 @@ export default function Donations() {
       return;
     }
 
-    const init = await initializePayment(createdContribution.id, method === 'mobile_money' ? 'mobile_money' : 'card');
+    const init = await initializePayment(
+      createdContribution.id,
+      method === 'stripe' ? 'stripe' : method === 'paypal' ? 'paypal' : 'mobile_money'
+    );
+
+    console.log('💳 initializePayment result:', { method, success: init.success, paymentUrl: init.paymentUrl, paymentId: init.paymentId, error: init.error });
 
     if (!init.success) {
       setPaymentResult('echoue');
       setPaymentStep('result');
       toast.error(init.error || 'Le paiement a échoué. Veuillez réessayer.');
+      console.error('❌ Payment init failed:', init.error);
       return;
     }
 
     lastPaymentRef.current = init.transactionId || init.paymentId || `PAY-${Date.now()}`;
+
+    // Stripe: rediriger vers la page de paiement Stripe
+    if (method === 'stripe' && init.clientSecret && init.paymentId) {
+      const params = new URLSearchParams({
+        clientSecret: init.clientSecret,
+        donationId: createdContribution.id,
+        paymentId: init.paymentId,
+        amount: String(c.montant),
+        currency: c.devise === 'USD' ? 'USD' : 'XOF',
+      });
+      window.location.href = `/paiement/stripe?${params.toString()}`;
+      return;
+    }
+
+    // PayPal: rediriger vers la page de paiement PayPal
+    if (method === 'paypal' && init.paymentUrl && init.paymentId) {
+      const params = new URLSearchParams({
+        approvalUrl: init.paymentUrl,
+        donationId: createdContribution.id,
+        paymentId: init.paymentId,
+        amount: String(c.montant),
+        currency: c.devise === 'USD' ? 'USD' : 'XOF',
+      });
+      window.location.href = `/paiement/paypal?${params.toString()}`;
+      return;
+    }
+
+    // MoneyFusion: rediriger vers la page de paiement
     setPaymentResult(null);
     setPaymentStep('processing');
     setActivePaymentId(init.paymentId || null);
 
     if (init.paymentUrl) {
-      // Rediriger directement vers MoneyFusion (window.open est bloqué après un await)
       window.location.href = init.paymentUrl;
     } else {
       toast.success('Paiement initialisé avec succès.');
@@ -419,17 +460,19 @@ export default function Donations() {
   if (isDataLoading) {
     return (
       <AppLayout>
-        <div className="container max-w-4xl py-8 px-4">
+        <div className="container max-w-6xl py-8 px-4">
           <PageLoader message="Chargement de vos dons..." />
         </div>
       </AppLayout>
     );
   }
 
+  if (isMobile) return <AppLayout><MobileDonations /></AppLayout>;
+
   if (success) {
     return (
       <AppLayout>
-        <div className="container max-w-lg py-16 px-4 text-center animate-fade-in">
+        <div className="container max-w-2xl py-16 px-4 text-center animate-fade-in">
           <div className="mx-auto w-20 h-20 rounded-full bg-secondary/20 flex items-center justify-center mb-6">
             <CheckCircle className="w-10 h-10 text-secondary" />
           </div>
@@ -450,7 +493,7 @@ export default function Donations() {
 
   return (
     <AppLayout>
-      <div className="container max-w-4xl py-8 px-4 animate-fade-in">
+      <div className="container max-w-6xl py-8 px-4 animate-fade-in">
         <h1 className="font-display text-3xl font-bold text-foreground mb-2">Mes dons</h1>
         <p className="text-muted-foreground mb-8">Gérez vos contributions et consultez votre historique</p>
 
@@ -613,7 +656,7 @@ export default function Donations() {
           </TabsContent>
 
           {/* Nouveau don */}
-          <TabsContent value="new" className="space-y-6 max-w-2xl">
+          <TabsContent value="new" className="space-y-6">
             {/* Type */}
             <Card className="border-border">
               <CardHeader>
@@ -661,7 +704,7 @@ export default function Donations() {
             <Card className="border-border">
               <CardHeader>
                 <CardTitle className="font-display text-lg">Montant</CardTitle>
-                <CardDescription>Minimum : {minAmount.toLocaleString()} {devise}</CardDescription>
+                <CardDescription>Min : {minAmount.toLocaleString()} {devise} — Max : {maxAmount.toLocaleString()} {devise}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-3">
@@ -670,8 +713,12 @@ export default function Donations() {
                       type="number"
                       placeholder={`Min. ${minAmount.toLocaleString()}`}
                       value={montant}
-                      onChange={e => setMontant(e.target.value)}
+                      onChange={e => {
+                        const val = parseFloat(e.target.value) || 0;
+                        if (val <= maxAmount) setMontant(e.target.value);
+                      }}
                       min={minAmount}
+                      max={maxAmount}
                     />
                   </div>
                   <Select value={devise} onValueChange={v => setDevise(v as typeof devise)}>
@@ -762,7 +809,7 @@ export default function Donations() {
                     Montant : <span className="font-bold text-foreground">{pendingContribution.current ? formatMontant(pendingContribution.current.montant, pendingContribution.current.devise) : ''}</span>
                   </DialogDescription>
                 </DialogHeader>
-                <div className="py-4 space-y-4">
+                <div className="py-4 space-y-3">
                   <button
                     onClick={() => simulatePayment('mobile_money')}
                     className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-primary bg-primary/5 hover:bg-primary/10 transition-all text-left"

@@ -10,10 +10,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bell, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useIsMobile } from '@/hooks/use-mobile';
+import MobileLayout from '@/components/MobileLayout';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, profile, getUserNotifications, markNotificationRead } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+
+  // Sur mobile: layout PWA avec bottom navigation
+  if (isMobile) {
+    return <MobileLayout>{children}</MobileLayout>;
+  }
 
   const userNotifs = getUserNotifications();
   const unreadCount = userNotifs.filter(n => !n.lue.includes(user?.id || '')).length;

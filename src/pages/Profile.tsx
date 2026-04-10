@@ -10,21 +10,22 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Save, User, Camera, Lock, Shield, Download, Trash2, Loader2, Eye, EyeOff, Mail, Phone, CheckCircle, Send, Settings, Bell } from 'lucide-react';
+import { Save, User, Camera, Lock, Shield, Download, Trash2, Loader2, Eye, EyeOff, Mail, Phone, CheckCircle, Send, Settings, Bell, ChevronRight, LogOut } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 import PageLoader from '@/components/PageLoader';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
 
 export default function Profile() {
   const { user, isDataLoading, logout, sendEmailVerificationCode, verifyEmailCode, sendPhoneVerificationCode, verifyPhoneCode } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profileData, setProfileData] = useState<any>(null);
 
   // Password change
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,6 +34,7 @@ export default function Profile() {
   const [changingPassword, setChangingPassword] = useState(false);
 
   // Delete account
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -107,6 +109,10 @@ export default function Profile() {
   const update = (key: string, value: string | number) => setForm(f => ({ ...f, [key]: value }));
 
   const handleSave = async () => {
+    if (!form.firstName && !form.lastName) {
+      toast.error('Veuillez remplir au moins le prénom et le nom');
+      return;
+    }
     setSaving(true);
     const res = await apiRequest('/api/users/profile', 'PUT', {
       firstName: form.firstName, lastName: form.lastName,
@@ -119,7 +125,7 @@ export default function Profile() {
     });
     setSaving(false);
     if (res.ok) toast.success('Profil mis à jour');
-    else toast.error('Erreur lors de la mise à jour');
+    else toast.error(res.data?.error || 'Erreur lors de la mise à jour');
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -226,9 +232,268 @@ export default function Profile() {
   const userData = profileData?.user || profileData;
   const avatarUrl = userData?.avatar?.url;
 
+  // ── VERSION MOBILE ──────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen bg-muted/30">
+          {/* Hero avatar */}
+          <div className="bg-gradient-to-b from-primary to-primary/80 pt-8 pb-16 px-4 text-center relative">
+            <div className="relative inline-block">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="w-24 h-24 rounded-full object-cover border-4 border-white/30 mx-auto" />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center mx-auto border-4 border-white/30">
+                  <User className="w-12 h-12 text-white" />
+                </div>
+              )}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-lg"
+              >
+                <Camera className="w-4 h-4 text-primary" />
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+            </div>
+            <h1 className="text-white font-bold text-xl mt-3">{form.firstName} {form.lastName}</h1>
+            <p className="text-white/70 text-sm mt-1">{user?.email}</p>
+            {emailVerified && phoneVerified && (
+              <div className="flex items-center justify-center gap-1 mt-2">
+                <CheckCircle className="w-3 h-3 text-green-300" />
+                <span className="text-green-300 text-xs">Compte vérifié</span>
+              </div>
+            )}
+          </div>
+
+          {/* Cards sections */}
+          <div className="px-4 -mt-8 space-y-4 pb-8">
+
+            {/* Infos personnelles */}
+            <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b border-border">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Informations</p>
+              </div>
+              {[
+                { label: 'Prénom', value: form.firstName, key: 'firstName' },
+                { label: 'Nom', value: form.lastName, key: 'lastName' },
+                { label: 'Téléphone', value: form.phone, key: 'phone' },
+                { label: 'Ville', value: form.city, key: 'city' },
+                { label: 'Pays', value: form.country, key: 'country' },
+              ].map(({ label, value, key }) => (
+                <div key={key} className="flex items-center px-4 py-3 border-b border-border last:border-0">
+                  <span className="text-sm text-muted-foreground w-24 shrink-0">{label}</span>
+                  <input
+                    className="flex-1 min-w-0 text-sm text-foreground bg-transparent outline-none text-right truncate"
+                    value={value}
+                    onChange={e => update(key, e.target.value)}
+                    placeholder={`Votre ${label.toLowerCase()}`}
+                  />
+                </div>
+              ))}
+              <div className="px-4 py-3">
+                <Button onClick={handleSave} disabled={saving} className="w-full gap-2" size="sm">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {saving ? 'Enregistrement...' : 'Enregistrer'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Vérification */}
+            <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b border-border">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Vérification</p>
+              </div>
+              <div className="px-4 py-3 flex items-center justify-between border-b border-border">
+                <div className="flex items-center gap-3">
+                  <Mail className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Email</p>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  </div>
+                </div>
+                {emailVerified ? (
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                ) : (
+                  <Button size="sm" variant="outline" onClick={handleSendEmailCode} disabled={sendingEmailCode}>
+                    {sendingEmailCode ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Vérifier'}
+                  </Button>
+                )}
+              </div>
+              {!emailVerified && (
+                <div className="px-4 py-3 flex gap-2 border-b border-border">
+                  <Input placeholder="Code 6 chiffres" value={emailCode} onChange={e => setEmailCode(e.target.value)} maxLength={6} className="flex-1 h-9 text-sm" />
+                  <Button size="sm" onClick={handleVerifyEmail} disabled={verifyingEmail || emailCode.length !== 6}>
+                    {verifyingEmail ? <Loader2 className="w-3 h-3 animate-spin" /> : 'OK'}
+                  </Button>
+                </div>
+              )}
+              <div className="px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Phone className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Téléphone</p>
+                    <p className="text-xs text-muted-foreground">{user?.telephone || 'Non renseigné'}</p>
+                  </div>
+                </div>
+                {phoneVerified ? (
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                ) : (
+                  <Button size="sm" variant="outline" onClick={handleSendPhoneCode} disabled={sendingPhoneCode}>
+                    {sendingPhoneCode ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Vérifier'}
+                  </Button>
+                )}
+              </div>
+              {!phoneVerified && user?.telephone && (
+                <div className="px-4 py-3 flex gap-2">
+                  <Input placeholder="Code SMS" value={phoneCode} onChange={e => setPhoneCode(e.target.value)} maxLength={6} className="flex-1 h-9 text-sm" />
+                  <Button size="sm" onClick={handleVerifyPhone} disabled={verifyingPhone || phoneCode.length !== 6}>
+                    {verifyingPhone ? <Loader2 className="w-3 h-3 animate-spin" /> : 'OK'}
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b border-border">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Compte</p>
+              </div>
+              <button onClick={() => setShowPasswordDialog(true)} className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Lock className="w-5 h-5 text-muted-foreground" />
+                  <span className="text-sm text-foreground">Changer le mot de passe</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+              <button onClick={handleDownloadData} className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Download className="w-5 h-5 text-muted-foreground" />
+                  <span className="text-sm text-foreground">Télécharger mes données</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+              <button onClick={() => { logout(); }} className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                <div className="flex items-center gap-3">
+                  <LogOut className="w-5 h-5 text-destructive" />
+                  <span className="text-sm text-destructive">Se déconnecter</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-destructive" />
+              </button>
+              <button onClick={() => setShowDeleteDialog(true)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Trash2 className="w-5 h-5 text-destructive" />
+                  <span className="text-sm text-destructive">Supprimer mon compte</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-destructive" />
+              </button>
+            </div>
+          </div>
+
+          {/* Dialogs */}
+          <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Changer le mot de passe</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2"><Label>Mot de passe actuel</Label>
+                  <div className="relative"><Input type={showCurrent ? 'text' : 'password'} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+                    <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setShowCurrent(!showCurrent)}>{showCurrent ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}</button>
+                  </div>
+                </div>
+                <div className="space-y-2"><Label>Nouveau mot de passe</Label>
+                  <div className="relative"><Input type={showNew ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                    <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setShowNew(!showNew)}>{showNew ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}</button>
+                  </div>
+                </div>
+                <div className="space-y-2"><Label>Confirmer</Label><Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} /></div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>Annuler</Button>
+                <Button onClick={handleChangePassword} disabled={changingPassword}>{changingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}Confirmer</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <DialogContent>
+              <DialogHeader><DialogTitle className="text-destructive">Supprimer mon compte</DialogTitle><DialogDescription>Cette action est irréversible.</DialogDescription></DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2"><Label>Mot de passe</Label><Input type="password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} /></div>
+                <div className="space-y-2"><Label>Tapez DELETE pour confirmer</Label><Input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} placeholder="DELETE" /></div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Annuler</Button>
+                <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleting}>{deleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}Supprimer</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </AppLayout>
+    );
+  }
+  // ── FIN VERSION MOBILE ──────────────────────────────────────────
+
+  const renderPasswordDialog = () => (
+    <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Changer le mot de passe</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Mot de passe actuel</Label>
+            <div className="relative">
+              <Input type={showCurrent ? 'text' : 'password'} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setShowCurrent(!showCurrent)}>
+                {showCurrent ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+              </button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Nouveau mot de passe</Label>
+            <div className="relative">
+              <Input type={showNew ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setShowNew(!showNew)}>
+                {showNew ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+              </button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Confirmer</Label>
+            <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>Annuler</Button>
+          <Button onClick={handleChangePassword} disabled={changingPassword}>
+            {changingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}Confirmer
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const renderDeleteDialog = () => (
+    <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="text-destructive">Supprimer mon compte</DialogTitle>
+          <DialogDescription>Cette action est irréversible. Toutes vos données seront supprimées.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2"><Label>Mot de passe</Label><Input type="password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} /></div>
+          <div className="space-y-2"><Label>Tapez DELETE pour confirmer</Label><Input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} placeholder="DELETE" /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Annuler</Button>
+          <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleting}>
+            {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+            Supprimer définitivement
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
     <AppLayout>
-      <div className="container max-w-2xl py-8 px-4 animate-fade-in">
+      <div className="container max-w-6xl py-8 px-4 animate-fade-in">
         <h1 className="font-display text-3xl font-bold text-foreground mb-6">Mon Profil</h1>
 
         {/* Avatar + info */}
@@ -257,11 +522,12 @@ export default function Profile() {
         </Card>
 
         <Tabs defaultValue="info" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="info">Infos</TabsTrigger>
             <TabsTrigger value="preferences">Préférences</TabsTrigger>
             <TabsTrigger value="verification">Vérification</TabsTrigger>
             <TabsTrigger value="security">Sécurité</TabsTrigger>
+            <TabsTrigger value="password">Mot de passe</TabsTrigger>
             <TabsTrigger value="data">Données</TabsTrigger>
           </TabsList>
 
@@ -315,6 +581,40 @@ export default function Profile() {
                   <div className="space-y-2"><Label>Quartier</Label><Input value={form.neighborhood} onChange={e => update('neighborhood', e.target.value)} /></div>
                   <div className="space-y-2"><Label>Code postal</Label><Input value={form.postalCode} onChange={e => update('postalCode', e.target.value)} /></div>
                 </div>
+
+                {/* Password change section */}
+                <div className="space-y-6">
+                  <h2 className="font-semibold text-lg text-foreground">Changer le mot de passe</h2>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Mot de passe actuel</Label>
+                      <div className="relative">
+                        <Input type={showCurrent ? 'text' : 'password'} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+                        <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setShowCurrent(!showCurrent)}>
+                          {showCurrent ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Nouveau mot de passe</Label>
+                      <div className="relative">
+                        <Input type={showNew ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                        <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setShowNew(!showNew)}>
+                          {showNew ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Confirmer le nouveau mot de passe</Label>
+                      <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+                    </div>
+                  </div>
+                  <Button onClick={handleChangePassword} disabled={changingPassword} className="w-full gap-2">
+                    {changingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    {changingPassword ? 'Modification...' : 'Changer le mot de passe'}
+                  </Button>
+                </div>
+
                 <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   {saving ? 'Enregistrement...' : 'Enregistrer'}
@@ -484,45 +784,46 @@ export default function Profile() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Mot de passe */}
+          <TabsContent value="password">
+            <Card className="border-border">
+              <CardHeader><CardTitle className="font-display">Mot de passe</CardTitle></CardHeader>
+              <CardContent className="space-y-6">
+                <h2 className="font-semibold text-lg text-foreground">Changer le mot de passe</h2>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Mot de passe actuel</Label>
+                    <div className="relative">
+                      <Input type={showCurrent ? 'text' : 'password'} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+                      <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setShowCurrent(!showCurrent)}>
+                        {showCurrent ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nouveau mot de passe</Label>
+                    <div className="relative">
+                      <Input type={showNew ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                      <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setShowNew(!showNew)}>
+                        {showNew ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Confirmer le nouveau mot de passe</Label>
+                    <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+                  </div>
+                </div>
+                <Button onClick={handleChangePassword} disabled={changingPassword} className="w-full gap-2">
+                  {changingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  {changingPassword ? 'Modification...' : 'Changer le mot de passe'}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
 
-        {/* Password dialog */}
-        <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Changer le mot de passe</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Mot de passe actuel</Label>
-                <div className="relative">
-                  <Input type={showCurrent ? 'text' : 'password'} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
-                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setShowCurrent(!showCurrent)}>
-                    {showCurrent ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Nouveau mot de passe</Label>
-                <div className="relative">
-                  <Input type={showNew ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} />
-                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setShowNew(!showNew)}>
-                    {showNew ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Confirmer</Label>
-                <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>Annuler</Button>
-              <Button onClick={handleChangePassword} disabled={changingPassword}>
-                {changingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                Confirmer
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {/* Delete dialog */}
         <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

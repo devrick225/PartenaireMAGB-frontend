@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import AppLayout from '@/components/AppLayout';
 import PageLoader, { CardSkeleton } from '@/components/PageLoader';
+import { useIsMobile } from '@/hooks/use-mobile';
+import MobileDashboard from '@/pages/mobile/MobileDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -18,18 +20,7 @@ import {
 
 export default function Dashboard() {
   const { user, contributions, payments, getTotalDons, getGamificationLevel, getLiensUtiles, isDataLoading } = useAuth();
-
-  if (isDataLoading) {
-    return (
-      <AppLayout>
-        <div className="container py-8 px-4 space-y-8">
-          <div className="h-8 w-64 bg-muted rounded animate-pulse" />
-          <CardSkeleton count={4} />
-          <CardSkeleton count={4} />
-        </div>
-      </AppLayout>
-    );
-  }
+  const isMobile = useIsMobile();
 
   const liensUtiles = getLiensUtiles();
   const total = getTotalDons();
@@ -43,6 +34,7 @@ export default function Dashboard() {
     borderRadius: '8px',
     color: 'hsl(var(--foreground))',
   };
+
 
   // === Derived stats ===
   const successPayments = useMemo(() => payments.filter(p => p.statut === 'succes'), [payments]);
@@ -133,6 +125,20 @@ export default function Dashboard() {
 
   const formatMontant = (m: number, d: string) =>
     d === 'USD' ? `$${m.toLocaleString()}` : `${m.toLocaleString()} FCFA`;
+
+  if (isDataLoading) {
+    return (
+      <AppLayout>
+        <div className="container py-8 px-4 space-y-8">
+          <div className="h-8 w-64 bg-muted rounded animate-pulse" />
+          <CardSkeleton count={4} />
+          <CardSkeleton count={4} />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (isMobile) return <AppLayout><MobileDashboard /></AppLayout>;
 
   return (
     <AppLayout>

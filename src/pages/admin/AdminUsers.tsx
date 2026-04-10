@@ -157,7 +157,7 @@ export default function AdminUsers() {
 
   return (
     <AppLayout>
-      <div className="container max-w-5xl py-8 px-4 animate-fade-in">
+      <div className="container max-w-7xl py-8 px-4 animate-fade-in">
         <div className="flex items-center gap-3 mb-2">
           <Users className="w-8 h-8 text-primary" />
           <h1 className="font-display text-3xl font-bold text-foreground">Gestion des utilisateurs</h1>

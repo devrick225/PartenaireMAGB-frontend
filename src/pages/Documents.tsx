@@ -12,6 +12,8 @@ import { fr } from 'date-fns/locale';
 import { apiRequest } from '@/lib/api';
 import DataPagination from '@/components/DataPagination';
 import PageLoader from '@/components/PageLoader';
+import { useIsMobile } from '@/hooks/use-mobile';
+import MobileDocuments from '@/pages/mobile/MobileDocuments';
 
 interface DonationReceipt {
   id: string;
@@ -46,6 +48,7 @@ export default function Documents() {
   const [receiptPageSize, setReceiptPageSize] = useState(10);
   const [schedulePage, setSchedulePage] = useState(1);
   const [schedulePageSize, setSchedulePageSize] = useState(10);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const load = async () => {
@@ -108,12 +111,14 @@ export default function Documents() {
   };
 
   if (isDataLoading || loading) {
-    return <AppLayout><div className="container max-w-4xl py-8 px-4"><PageLoader message="Chargement des documents..." /></div></AppLayout>;
+    return <AppLayout><div className="container max-w-6xl py-8 px-4"><PageLoader message="Chargement des documents..." /></div></AppLayout>;
   }
+
+  if (isMobile) return <AppLayout><MobileDocuments /></AppLayout>;
 
   return (
     <AppLayout>
-      <div className="container max-w-4xl py-8 px-4 animate-fade-in">
+      <div className="container max-w-6xl py-8 px-4 animate-fade-in">
         <div className="flex items-center gap-3 mb-2">
           <FileText className="w-8 h-8 text-primary" />
           <h1 className="font-display text-3xl font-bold text-foreground">Mes documents</h1>

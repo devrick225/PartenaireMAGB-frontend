@@ -18,6 +18,8 @@ import Payments from "./pages/Payments";
 import PaymentCallback from "./pages/PaymentCallback";
 import Documents from "./pages/Documents";
 import Tickets from "./pages/Tickets";
+import StripePayment from "./pages/StripePayment";
+import PayPalPayment from "./pages/PayPalPayment";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminDonations from "./pages/admin/AdminDonations";
 import AdminNotifications from "./pages/admin/AdminNotifications";
@@ -56,6 +58,8 @@ const AnimatedRoutes = () => {
         <Route path="/paiements" element={<ProtectedRoute><PageTransition><Payments /></PageTransition></ProtectedRoute>} />
         <Route path="/paiements/callback" element={<PageTransition><PaymentCallback /></PageTransition>} />
         <Route path="/callback" element={<PageTransition><PaymentCallback /></PageTransition>} />
+        <Route path="/paiement/stripe" element={<ProtectedRoute><PageTransition><StripePayment /></PageTransition></ProtectedRoute>} />
+        <Route path="/paiement/paypal" element={<ProtectedRoute><PageTransition><PayPalPayment /></PageTransition></ProtectedRoute>} />
         <Route path="/documents" element={<ProtectedRoute><PageTransition><Documents /></PageTransition></ProtectedRoute>} />
         <Route path="/support" element={<ProtectedRoute><PageTransition><Tickets /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/utilisateurs" element={<ProtectedRoute><PageTransition><AdminUsers /></PageTransition></ProtectedRoute>} />

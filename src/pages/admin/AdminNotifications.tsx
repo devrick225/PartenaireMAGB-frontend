@@ -58,7 +58,7 @@ export default function AdminNotifications() {
 
   return (
     <AppLayout>
-      <div className="container max-w-2xl py-8 px-4 animate-fade-in">
+      <div className="container max-w-4xl py-8 px-4 animate-fade-in">
         <div className="flex items-center gap-3 mb-2">
           <Bell className="w-8 h-8 text-primary" />
           <h1 className="font-display text-3xl font-bold text-foreground">Notifications</h1>

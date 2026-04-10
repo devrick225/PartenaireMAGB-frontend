@@ -83,8 +83,8 @@ interface AuthContextType {
   addPayment: (payment: Omit<Payment, 'id' | 'userId'>) => Promise<Payment | null>;
   initializePayment: (
     donationId: string,
-    method: 'mobile_money' | 'card'
-  ) => Promise<{ success: boolean; paymentUrl?: string; paymentId?: string; transactionId?: string; error?: string }>;
+    method: 'mobile_money' | 'card' | 'stripe' | 'paypal'
+  ) => Promise<{ success: boolean; paymentUrl?: string; paymentId?: string; transactionId?: string; clientSecret?: string; orderId?: string; approvalUrl?: string; error?: string }>;
   verifyPaymentStatus: (paymentId: string) => Promise<{ success: boolean; status?: 'pending' | 'completed' | 'failed'; error?: string }>;
   refreshFinancialData: () => Promise<void>;
   getTotalDons: () => number;
@@ -430,7 +430,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           firstName: userData.prenoms,
           lastName: userData.nom,
           email: userData.email,
-          phone: userData.telephone,
+          phone: userData.telephone, // déjà formaté avec indicatif depuis Signup.tsx
           password: userData.password,
           country: userData.pays,
           // Le formulaire frontend-new ne collecte pas encore la ville
@@ -628,18 +628,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const initializePayment = async (
     donationId: string,
-    method: 'mobile_money' | 'card'
-  ): Promise<{ success: boolean; paymentUrl?: string; paymentId?: string; transactionId?: string; error?: string }> => {
+    method: 'mobile_money' | 'card' | 'stripe' | 'paypal'
+  ): Promise<{ success: boolean; paymentUrl?: string; paymentId?: string; transactionId?: string; clientSecret?: string; orderId?: string; approvalUrl?: string; error?: string }> => {
     const token = getAccessToken();
     if (!token) {
       return { success: false, error: 'Session expirée, reconnectez-vous' };
     }
 
     try {
+      const isStripe = method === 'stripe' || method === 'card';
+      const isPayPal = method === 'paypal';
       const payload: Record<string, string> = {
         donationId,
-        provider: 'moneyfusion',
-        paymentMethod: 'moneyfusion',
+        provider: isStripe ? 'stripe' : isPayPal ? 'paypal' : 'moneyfusion',
+        paymentMethod: isStripe ? 'card' : isPayPal ? 'paypal' : 'moneyfusion',
       };
 
       if (user?.telephone && /^\+?[1-9]\d{1,14}$/.test(user.telephone)) {
@@ -663,6 +665,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         paymentUrl: result.data.paymentUrl,
         paymentId: result.data.paymentId,
         transactionId: result.data.transactionId,
+        clientSecret: result.data.clientSecret,
+        orderId: result.data.orderId,
+        approvalUrl: result.data.approvalUrl,
       };
     } catch {
       return { success: false, error: 'Erreur réseau pendant l\'initialisation du paiement' };

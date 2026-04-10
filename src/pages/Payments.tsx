@@ -14,6 +14,8 @@ import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import DataPagination from '@/components/DataPagination';
 import PageLoader, { CardSkeleton, TableSkeleton } from '@/components/PageLoader';
+import { useIsMobile } from '@/hooks/use-mobile';
+import MobilePayments from '@/pages/mobile/MobilePayments';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
@@ -24,6 +26,7 @@ export default function Payments() {
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const isMobile = useIsMobile();
 
   const formatMontant = (m: number, d: string) =>
     d === 'USD' ? `${m.toLocaleString()}` : `${m.toLocaleString()} FCFA`;
@@ -72,7 +75,7 @@ export default function Payments() {
   if (isDataLoading) {
     return (
       <AppLayout>
-        <div className="container max-w-5xl py-8 px-4 space-y-8">
+        <div className="container max-w-7xl py-8 px-4 space-y-8">
           <div className="h-8 w-48 bg-muted rounded animate-pulse" />
           <CardSkeleton count={4} />
           <Card className="border-border">
@@ -124,9 +127,11 @@ export default function Payments() {
     doc.save(`paiements_${format(new Date(), 'yyyyMMdd')}.pdf`);
   };
 
+  if (isMobile) return <AppLayout><MobilePayments /></AppLayout>;
+
   return (
     <AppLayout>
-      <div className="container max-w-5xl py-8 px-4 animate-fade-in">
+      <div className="container max-w-7xl py-8 px-4 animate-fade-in">
         <div className="flex items-center gap-3 mb-2">
           <Wallet className="w-8 h-8 text-primary" />
           <h1 className="font-display text-3xl font-bold text-foreground">Mes paiements</h1>
